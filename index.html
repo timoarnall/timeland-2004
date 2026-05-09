@@ -6,31 +6,23 @@
 <title>Time that land forgot</title>
 <style>
 :root {
-  --page-bg: #ffffff;       /* page background — matches an elasticspace-style white page */
-  --artefact-bg: #f9f8f6;   /* very subtle warm grey — distinguishes the canvas from white */
+  /* Body bg is transparent so the host page (whatever theme) shows through.
+     The artefact canvas keeps its own off-white. UI controls use translucent
+     greys that read on either a light or a dark host. */
+  --artefact-bg: #f9f8f6;
   --fg: #000000;
   --muted: #888888;
   --accent: #c40000;
   --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --base: 11px;
-  --play-bg: #e6e4e0;
-  --play-bg-hover: #d4d2cd;
+  --play-bg: rgba(128,128,128,0.20);
+  --play-bg-hover: rgba(128,128,128,0.32);
   --play-icon: #8a847b;
-  --scrub-track: #ebe9e5;
-  --scrub-thumb: #b0aba2;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page-bg: transparent;            /* let host page show through; stage stays off-white */
-    --play-bg: rgba(255,255,255,0.08);
-    --play-bg-hover: rgba(255,255,255,0.16);
-    --play-icon: #b0aba2;
-    --scrub-track: rgba(255,255,255,0.12);
-    --scrub-thumb: #b0aba2;
-  }
+  --scrub-track: rgba(128,128,128,0.22);
+  --scrub-thumb: #8a847b;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: var(--page-bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
+html, body { background: transparent; color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
 body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 #stage { position: relative; width: 500px; height: 500px; background: var(--artefact-bg); }
 canvas { display: block; width: 500px; height: 500px; background: var(--artefact-bg); }
