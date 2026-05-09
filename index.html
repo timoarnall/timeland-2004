@@ -6,7 +6,7 @@
 <title>Time that land forgot</title>
 <style>
 :root {
-  --bg: #ffffff;
+  --bg: #f6f3ed;            /* warm neutral off-white — distinguishes the artefact */
   --fg: #000000;
   --muted: #888888;
   --accent: #c40000;
@@ -16,36 +16,35 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: var(--bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
 body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-#stage { position: relative; width: 500px; height: 500px; background: #fff; }
-canvas { display: block; width: 500px; height: 500px; }
+#stage { position: relative; width: 500px; height: 500px; background: var(--bg); }
+canvas { display: block; width: 500px; height: 500px; background: var(--bg); }
 #controls {
-  width: 500px; padding: 8px 0 0;
-  display: grid; grid-template-columns: 70px 1fr 22ch; gap: 14px; align-items: center;
+  width: 500px; padding: 14px 0 0;
+  display: flex; align-items: center; gap: 14px;
 }
-button {
-  background: none; border: 1px solid var(--fg); color: var(--fg);
-  padding: 4px 0; font: 400 11px var(--font); cursor: pointer; border-radius: 0;
-  letter-spacing: 0.04em;
+#play {
+  flex: 0 0 auto;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--fg); color: var(--bg);
+  border: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 120ms ease;
 }
-button:hover { background: var(--fg); color: var(--bg); }
-input[type=range] {
-  -webkit-appearance: none; width: 100%; height: 1px; background: var(--fg);
+#play:hover { opacity: 0.75; }
+#play svg { width: 11px; height: 11px; fill: var(--bg); display: block; }
+#scrub {
+  flex: 1 1 auto;
+  -webkit-appearance: none; height: 1px; background: var(--fg);
   outline: none; margin: 0;
 }
-input[type=range]::-webkit-slider-thumb {
+#scrub::-webkit-slider-thumb {
   -webkit-appearance: none; width: 9px; height: 9px; border-radius: 50%;
   background: var(--accent); cursor: pointer; border: 0;
 }
-input[type=range]::-moz-range-thumb {
+#scrub::-moz-range-thumb {
   width: 9px; height: 9px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 0;
 }
-#now { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-#footer {
-  width: 500px; margin-top: 14px; color: var(--muted); font-size: 10px;
-  display: flex; justify-content: space-between;
-}
-#footer a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); }
-#footer a:hover { color: var(--fg); }
 </style>
 </head>
 <body>
@@ -55,14 +54,10 @@ input[type=range]::-moz-range-thumb {
 </div>
 
 <div id="controls">
-  <button id="play">PLAY</button>
+  <button id="play" aria-label="Play">
+    <svg id="play-icon" viewBox="0 0 12 12"><polygon points="2,1 11,6 2,11"/></svg>
+  </button>
   <input id="scrub" type="range" min="0" max="10000" value="0" step="1">
-  <div id="now">—</div>
-</div>
-
-<div id="footer">
-  <span>Iceland · 30 June – 6 July 2004 · Timo Arnall &amp; Even Westvang</span>
-  <span><a href="archive/index_original.html">2004</a> · <a href="archive/index_map.html">map</a> · <a href="https://github.com/timoarnall/timeland-2004/raw/main/time_land_forgot.mov">film</a> · <a href="https://github.com/timoarnall/timeland-2004">source</a></span>
 </div>
 
 <script>
@@ -634,27 +629,26 @@ function pathHour(ctx) {
   // ============================================================================
   const scrub = document.getElementById('scrub');
   const playBtn = document.getElementById('play');
-  const nowEl = document.getElementById('now');
+  const playIcon = document.getElementById('play-icon');
+  const ICON_PLAY  = '<polygon points="2,1 11,6 2,11"/>';
+  const ICON_PAUSE = '<rect x="2" y="1" width="3" height="10"/><rect x="7" y="1" width="3" height="10"/>';
 
   function setT(t, jump = false) {
     targetT = Math.max(t0, Math.min(t1, t));
     if (jump) dispT = targetT;
-    const f = (targetT - t0) / (t1 - t0);
-    const sv = Math.round(f * +scrub.max);
+    // Scrub tracks parserIdx (uniform per-trkpt) so the playhead moves at
+    // a steady rate as the parser advances, instead of jumping unevenly
+    // because trkpts aren't evenly spaced in time.
+    const sv = Math.round(parserIdx / (allPts.length - 1) * +scrub.max);
     if (+scrub.value !== sv) scrub.value = sv;
-    nowEl.textContent = fmtFlashDate(targetT).slice(0, 19);
   }
 
   scrub.addEventListener('input', e => {
     stopPlay();
+    // Scrub maps directly to parserIdx (uniform-per-trkpt), so dragging the
+    // playhead is smooth and consistent with how it advances during play.
     const f = +e.target.value / +e.target.max;
-    const targetTime = t0 + f * (t1 - t0);
-    let lo = 0, hi = allPts.length - 1;
-    while (lo < hi) {
-      const mid = (lo + hi) >> 1;
-      if (allPts[mid].t < targetTime) lo = mid + 1; else hi = mid;
-    }
-    parserIdx = lo;
+    parserIdx = Math.max(0, Math.min(allPts.length - 1, Math.round(f * (allPts.length - 1))));
     targetT = allPts[parserIdx].t;
     setT(targetT, true);
     timeD = 0;
@@ -666,7 +660,8 @@ function pathHour(ctx) {
   function startPlay() {
     if (playing) return;
     playing = true;
-    playBtn.textContent = 'PAUSE';
+    playBtn.setAttribute('aria-label', 'Pause');
+    playIcon.innerHTML = ICON_PAUSE;
     if (parserIdx >= allPts.length - 1) {
       // restart
       parserIdx = 0;
@@ -677,7 +672,8 @@ function pathHour(ctx) {
   }
   function stopPlay() {
     playing = false;
-    playBtn.textContent = 'PLAY';
+    playBtn.setAttribute('aria-label', 'Play');
+    playIcon.innerHTML = ICON_PLAY;
   }
   playBtn.addEventListener('click', () => playing ? stopPlay() : startPlay());
 
