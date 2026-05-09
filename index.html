@@ -13,6 +13,21 @@
   --accent: #c40000;
   --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --base: 11px;
+  --play-bg: #e6e4e0;
+  --play-bg-hover: #d4d2cd;
+  --play-icon: #8a847b;
+  --scrub-track: #ebe9e5;
+  --scrub-thumb: #b0aba2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page-bg: transparent;            /* let host page show through; stage stays off-white */
+    --play-bg: rgba(255,255,255,0.08);
+    --play-bg-hover: rgba(255,255,255,0.16);
+    --play-icon: #b0aba2;
+    --scrub-track: rgba(255,255,255,0.12);
+    --scrub-thumb: #b0aba2;
+  }
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: var(--page-bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
@@ -27,25 +42,25 @@ canvas { display: block; width: 500px; height: 500px; background: var(--artefact
   flex: 0 0 auto;
   width: 32px; height: 32px;
   border-radius: 50%;
-  background: #e6e4e0;
+  background: var(--play-bg);
   border: 0; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: background 120ms ease;
 }
-#play:hover { background: #d4d2cd; }
-#play svg { width: 11px; height: 11px; fill: #8a847b; display: block; }
+#play:hover { background: var(--play-bg-hover); }
+#play svg { width: 11px; height: 11px; fill: var(--play-icon); display: block; }
 #scrub {
   flex: 1 1 auto;
-  -webkit-appearance: none; height: 6px; background: #ebe9e5;
+  -webkit-appearance: none; height: 6px; background: var(--scrub-track);
   border-radius: 3px; outline: none; margin: 0;
   cursor: pointer;
 }
 #scrub::-webkit-slider-thumb {
   -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
-  background: #b0aba2; cursor: pointer; border: 0;
+  background: var(--scrub-thumb); cursor: pointer; border: 0;
 }
 #scrub::-moz-range-thumb {
-  width: 14px; height: 14px; border-radius: 50%; background: #b0aba2; cursor: pointer; border: 0;
+  width: 14px; height: 14px; border-radius: 50%; background: var(--scrub-thumb); cursor: pointer; border: 0;
 }
 </style>
 </head>
