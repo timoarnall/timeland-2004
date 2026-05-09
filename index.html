@@ -287,17 +287,19 @@ function cameraAnimate(cam, minutes, bounds, mapW) {
 // Shape primitives — match SWF DEFINESHAPE bodies
 // ============================================================================
 function pathOctagonMinute(ctx) {
-  // shape id 0006: octagon vertices (line color #c40000, 50% alpha applied at draw)
+  // shape id 0006: octagon vertices. Original SWF span is 0.40 design units;
+  // scaled up 15% here (×1.15) so markers read at the size the SWF appears
+  // at when the .mov is upsampled from native 478 to 500 in side-by-side.
   ctx.beginPath();
-  ctx.moveTo(-0.15, -0.15);
-  ctx.lineTo(-0.20,  0.00);
-  ctx.lineTo(-0.15,  0.15);
-  ctx.lineTo( 0.00,  0.20);
-  ctx.lineTo( 0.15,  0.15);
-  ctx.lineTo( 0.20,  0.00);
-  ctx.lineTo( 0.15, -0.15);
-  ctx.lineTo( 0.00, -0.20);
-  ctx.lineTo(-0.15, -0.15);
+  ctx.moveTo(-0.173, -0.173);
+  ctx.lineTo(-0.230,  0.000);
+  ctx.lineTo(-0.173,  0.173);
+  ctx.lineTo( 0.000,  0.230);
+  ctx.lineTo( 0.173,  0.173);
+  ctx.lineTo( 0.230,  0.000);
+  ctx.lineTo( 0.173, -0.173);
+  ctx.lineTo( 0.000, -0.230);
+  ctx.lineTo(-0.173, -0.173);
 }
 function pathMinuteFront(ctx) {
   // shape id 0003: 3-arm cross around (0.80, 0.75) — placement applies (-0.80, -0.75) so origin is at point
