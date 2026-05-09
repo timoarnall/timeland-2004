@@ -475,9 +475,15 @@ function pathHour(ctx) {
       ctx.lineWidth   = 1 / (k * photoScale);   // hairline
       ctx.strokeRect(-160, -106.4, 320, 212.8);
 
-      // Side-by-side comparison vs the .mov shows individual photos at ~30-40%
-      // perceived; my prior 0.55 read too solid. 0.35 better matches the .mov.
-      const PHOTO_ALPHA_CAP = 0.35;
+      // AS2 sets clip.placeholder._alpha = timer, ramps 0→100 over 83 frames
+      // (= 2.77s real at 30fps). The placement CXForm `mul a=0.1` was on the
+      // EMPTY placeholder; loadMovie replaces the clip's contents and (per
+      // Flash 6 behaviour) doesn't preserve the placement transform on the
+      // loaded image. So at timer=100 the photo is fully opaque. Layered
+      // see-through in the .mov comes from size variation across photos
+      // (older photos shrunk smaller than newer per the scale formula),
+      // not per-photo translucency.
+      const PHOTO_ALPHA_CAP = 1.0;
       ctx.globalAlpha = fadeAlpha * PHOTO_ALPHA_CAP;
       if (img.complete && img.naturalWidth > 0) {
         ctx.drawImage(img, -160, -106.5, 320, 213);
