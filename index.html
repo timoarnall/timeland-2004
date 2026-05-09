@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time that land forgot</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #000000;
+  --muted: #888888;
+  --accent: #c40000;
+  --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --base: 11px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
+body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#stage { position: relative; width: 500px; height: 500px; background: #fff; }
+canvas { display: block; width: 500px; height: 500px; }
+#controls {
+  width: 500px; padding: 8px 0 0;
+  display: grid; grid-template-columns: 70px 1fr 22ch; gap: 14px; align-items: center;
+}
+button {
+  background: none; border: 1px solid var(--fg); color: var(--fg);
+  padding: 4px 0; font: 400 11px var(--font); cursor: pointer; border-radius: 0;
+  letter-spacing: 0.04em;
+}
+button:hover { background: var(--fg); color: var(--bg); }
+input[type=range] {
+  -webkit-appearance: none; width: 100%; height: 1px; background: var(--fg);
+  outline: none; margin: 0;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--accent); cursor: pointer; border: 0;
+}
+input[type=range]::-moz-range-thumb {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 0;
+}
+#now { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+#footer {
+  width: 500px; margin-top: 14px; color: var(--muted); font-size: 10px;
+  display: flex; justify-content: space-between;
+}
+#footer a { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--muted); }
+#footer a:hover { color: var(--fg); }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="c" width="500" height="500"></canvas>
+</div>
+
+<div id="controls">
+  <button id="play">PLAY</button>
+  <input id="scrub" type="range" min="0" max="10000" value="0" step="1">
+  <div id="now">—</div>
+</div>
+
+<div id="footer">
+  <span>Iceland · 30 June – 6 July 2004 · Timo Arnall &amp; Even Westvang</span>
+  <span><a href="archive/index_original.html">2004</a> · <a href="archive/index_map.html">map</a> · <a href="time_land_forgot.mov">film</a></span>
+</div>
+
+<script>
+"use strict";
+
+// ============================================================================
+// Constants ported from the SWF (timeland19.swf)
+// ============================================================================
+const SWF_W = 500, SWF_H = 500;
+const G_LAT_SCALE = -800;          // gLatScale: lat → y multiplier
+const G_LON_SCALE =  400;          // gLonScale: lon → x multiplier
+const BASE_SCALE  = 0.5;           // centre placement scale
+const BASE_TX     = 203;           // centre placement translate
+const BASE_TY     = 205;
+const SPRING_K_CAM    = 1 / 40;    // CAMDRAWING spring
+const SPRING_DAMP_CAM = 0.69;
+const SPRING_K_EXT    = 1 / 3;     // EXTENTS spring (for bbox)
+const SPRING_DAMP_EXT = 0.59;
+const SCALE_CAP       = 2500;      // matches SWF v19 exactly. Bumping this
+                                   // doubled photo bloom sizes and made stops
+                                   // feel artificially close. With trkpt-paced
+                                   // playback, stops dwell long enough for the
+                                   // SWF's 2500 cap to feel intimate.
+const TRAIL_WINDOW    = 15;        // last 15 minutes used for bbox
+const NEW_MINUTE_MS   = 30000;     // new minute marker gap
+
+const PHOTO_DIR = 'data/photos/';
+const GPX_URL   = 'data/timo_iceland_noflight.gpx';
+const XML_URL   = 'data/imageData.xml';
+
+// ============================================================================
+// Parsing
+// ============================================================================
+// Camera was set to GPS/UTC time at the time (Timo's recollection, verified
+// by walking-pace cadence test). EXIF and GPX are both true UTC. The .mov's
+// displayed clock was 2h earlier than reality because Flash 6's setHours()
+// reinterpreted GPX Z and EXIF strings as local CEST — that was a Flash bug,
+// not the source of truth. Honour the camera, not the .mov labels.
+function parseGPX(text) {
+  const xml = new DOMParser().parseFromString(text, 'application/xml');
+  const pts = [];
+  for (const n of xml.getElementsByTagName('trkpt')) {
+    const tNode = n.getElementsByTagName('time')[0];
+    if (!tNode) continue;
+    const t = Date.parse(tNode.textContent);
+    if (isNaN(t)) continue;
+    const eNode = n.getElementsByTagName('ele')[0];
+    const lat = +n.getAttribute('lat');
+    const lon = +n.getAttribute('lon');
+    pts.push({
+      raw_lat: lat, raw_lon: lon,
+      x: lon * G_LON_SCALE,        // SWF projection
+      y: lat * G_LAT_SCALE,
+      ele: eNode ? +eNode.textContent : 0,
+      t,
+    });
+  }
+  pts.sort((a, b) => a.t - b.t);
+  return pts;
+}
+
+function parseImages(text) {
+  const xml = new DOMParser().parseFromString(text, 'application/xml');
+  const out = [];
+  for (const n of xml.getElementsByTagName('image')) {
+    const file = n.getElementsByTagName('file')[0].textContent.trim();
+    const tStr = n.getElementsByTagName('time')[0].textContent.trim();
+    const m = tStr.match(/(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+    if (!m) continue;
+    const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    out.push({ file, t });
+  }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+
+function lastIndexBefore(arr, t, key = 't') {
+  if (arr.length === 0 || t < arr[0][key]) return -1;
+  if (t >= arr[arr.length - 1][key]) return arr.length - 1;
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid][key] <= t) lo = mid; else hi = mid;
+  }
+  return lo;
+}
+function nearestPoint(pts, t) {
+  if (t <= pts[0].t) return pts[0];
+  if (t >= pts[pts.length - 1].t) return pts[pts.length - 1];
+  const i = lastIndexBefore(pts, t);
+  const a = pts[i], b = pts[i + 1];
+  return (t - a.t) < (b.t - t) ? a : b;
+}
+
+// ============================================================================
+// Time formatting — match Flash's Date.toString() in CEST (the SWF locale)
+// "Wed Jun 30 15:38:25 GMT+0200 2004"
+// ============================================================================
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const pad2 = n => String(n).padStart(2, '0');
+function fmtFlashDate(t) {
+  const d = new Date(t + 2 * 3600 * 1000);   // CEST = UTC+2
+  return DAYS[d.getUTCDay()] + ' ' + MONTHS[d.getUTCMonth()] + ' ' + pad2(d.getUTCDate())
+       + ' ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds())
+       + ' GMT+0200 ' + d.getUTCFullYear();
+}
+
+// ============================================================================
+// Trail / bucket: build minute and hour arrays from full GPX
+// (matches TrackKeeper.addPoint logic: new minute every >30s, new hour on getHours change)
+// ============================================================================
+function buildTrail(pts) {
+  const minutes = [];
+  const hours   = [];
+  let lastMinT = -Infinity, lastHourH = -1;
+  for (const p of pts) {
+    if (p.t > lastMinT + NEW_MINUTE_MS) {
+      minutes.push(p);
+      lastMinT = p.t;
+    }
+    const hr = Math.floor(p.t / 3600000);
+    if (hr !== lastHourH) {
+      hours.push(p);
+      lastHourH = hr;
+    }
+  }
+  return { minutes, hours };
+}
+
+// ============================================================================
+// Camera — direct port of CameraKeeper from DoAction_4.as
+// ============================================================================
+function makeCamera(mapW, mapH) {
+  return {
+    state: 'CAMDRAWING',  // 'CAMDRAWING' | 'EXTENTS'
+    cur:   { x: 0, y: 0 }, dest: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    cur1:  { x: -mapW/2, y: -mapH/2 }, cur2:  { x: mapW/2, y: mapH/2 },
+    dest1: { x: -mapW/2, y: -mapH/2 }, dest2: { x: mapW/2, y: mapH/2 },
+    vel1:  { x: 0, y: 0 }, vel2:  { x: 0, y: 0 },
+    xCoord: 0, yCoord: 0,
+    scale_pct: 90,
+    initialized: false,
+  };
+}
+
+function refocus(cam, points) {
+  let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+  for (const p of points) {
+    if (p.x < x1 || x1 === 0) x1 = p.x;
+    if (p.y < y1 || y1 === 0) y1 = p.y;
+    if (p.x > x2 || x2 === 0) x2 = p.x;
+    if (p.y > y2 || y2 === 0) y2 = p.y;
+  }
+  cam.dest1.x = x1; cam.dest1.y = y1;
+  cam.dest2.x = x2; cam.dest2.y = y2;
+}
+
+function cameraAnimate(cam, minutes, bounds, mapW) {
+  if (cam.state === 'CAMDRAWING' && minutes.length > 0) {
+    if (minutes.length > TRAIL_WINDOW) {
+      refocus(cam, minutes.slice(-TRAIL_WINDOW, -1));   // last 14 of 15
+    }
+    const last = minutes[minutes.length - 1];
+    cam.dest.x = last.x; cam.dest.y = last.y;
+
+    // First-frame snap so we don't have a violent intro
+    if (!cam.initialized) {
+      cam.cur.x = cam.dest.x; cam.cur.y = cam.dest.y;
+      cam.cur1.x = cam.dest1.x; cam.cur1.y = cam.dest1.y;
+      cam.cur2.x = cam.dest2.x; cam.cur2.y = cam.dest2.y;
+      cam.initialized = true;
+    } else {
+      cam.vel.x  += (cam.dest.x  - cam.cur.x ) * SPRING_K_CAM;
+      cam.vel.y  += (cam.dest.y  - cam.cur.y ) * SPRING_K_CAM;
+      cam.vel.x *= SPRING_DAMP_CAM; cam.vel.y *= SPRING_DAMP_CAM;
+      cam.cur.x += cam.vel.x;       cam.cur.y += cam.vel.y;
+
+      cam.vel1.x += (cam.dest1.x - cam.cur1.x) * SPRING_K_CAM;
+      cam.vel1.y += (cam.dest1.y - cam.cur1.y) * SPRING_K_CAM;
+      cam.vel2.x += (cam.dest2.x - cam.cur2.x) * SPRING_K_CAM;
+      cam.vel2.y += (cam.dest2.y - cam.cur2.y) * SPRING_K_CAM;
+      cam.vel1.x *= SPRING_DAMP_CAM; cam.vel1.y *= SPRING_DAMP_CAM;
+      cam.vel2.x *= SPRING_DAMP_CAM; cam.vel2.y *= SPRING_DAMP_CAM;
+    }
+  }
+
+  if (cam.state === 'EXTENTS') {
+    cam.dest1.x = bounds.minLat; cam.dest1.y = bounds.minLon;
+    cam.dest2.x = bounds.maxLat; cam.dest2.y = bounds.maxLon;
+    cam.vel1.x += (cam.dest1.x - cam.cur1.x) * SPRING_K_EXT;
+    cam.vel1.y += (cam.dest1.y - cam.cur1.y) * SPRING_K_EXT;
+    cam.vel2.x += (cam.dest2.x - cam.cur2.x) * SPRING_K_EXT;
+    cam.vel2.y += (cam.dest2.y - cam.cur2.y) * SPRING_K_EXT;
+    cam.vel1.x *= SPRING_DAMP_EXT; cam.vel1.y *= SPRING_DAMP_EXT;
+    cam.vel2.x *= SPRING_DAMP_EXT; cam.vel2.y *= SPRING_DAMP_EXT;
+  }
+
+  // bbox velocities applied unconditionally (matches SWF)
+  cam.cur1.x += cam.vel1.x; cam.cur1.y += cam.vel1.y;
+  cam.cur2.x += cam.vel2.x; cam.cur2.y += cam.vel2.y;
+
+  if (cam.state === 'CAMDRAWING') {
+    cam.xCoord = cam.cur.x;
+    cam.yCoord = cam.cur.y;
+  } else {
+    cam.xCoord = (cam.cur2.x - cam.cur1.x) / 2 + cam.cur1.x;
+    cam.yCoord = (cam.cur2.y - cam.cur1.y) / 2 + cam.cur1.y;
+  }
+
+  // SWF v19: CAMDRAWING uses 90×, EXTENTS uses 100× (decompiled DoAction_4.as)
+  const w = cam.cur2.x - cam.cur1.x;
+  let s = (cam.state === 'CAMDRAWING' ? 90 : 100) * mapW / Math.max(0.001, w);
+  if (s > SCALE_CAP) s = SCALE_CAP;
+  cam.scale_pct = s;
+}
+
+// ============================================================================
+// Shape primitives — match SWF DEFINESHAPE bodies
+// ============================================================================
+function pathOctagonMinute(ctx) {
+  // shape id 0006: octagon vertices (line color #c40000, 50% alpha applied at draw)
+  ctx.beginPath();
+  ctx.moveTo(-0.15, -0.15);
+  ctx.lineTo(-0.20,  0.00);
+  ctx.lineTo(-0.15,  0.15);
+  ctx.lineTo( 0.00,  0.20);
+  ctx.lineTo( 0.15,  0.15);
+  ctx.lineTo( 0.20,  0.00);
+  ctx.lineTo( 0.15, -0.15);
+  ctx.lineTo( 0.00, -0.20);
+  ctx.lineTo(-0.15, -0.15);
+}
+function pathMinuteFront(ctx) {
+  // shape id 0003: 3-arm cross around (0.80, 0.75) — placement applies (-0.80, -0.75) so origin is at point
+  ctx.beginPath();
+  ctx.moveTo(0.80, 0.10); ctx.lineTo(0.80, 0.75); ctx.lineTo(1.60, 0.75);
+  ctx.moveTo(0.80, 1.65); ctx.lineTo(0.80, 0.75); ctx.lineTo(0.15, 0.75);
+}
+function pathHour(ctx) {
+  // shape id 0009: cross
+  ctx.beginPath();
+  ctx.moveTo( 0.05, -1.10); ctx.lineTo(0.05,  0.05); ctx.lineTo( 1.50, 0.05);
+  ctx.moveTo( 0.05,  1.40); ctx.lineTo(0.05,  0.05); ctx.lineTo(-1.40, 0.05);
+}
+
+// ============================================================================
+// Main
+// ============================================================================
+(async function main() {
+  const [gpxText, xmlText] = await Promise.all([
+    fetch(GPX_URL).then(r => r.text()),
+    fetch(XML_URL).then(r => r.text()),
+  ]);
+  const allPts = parseGPX(gpxText);
+  const photos = parseImages(xmlText);
+  const { minutes, hours } = buildTrail(allPts);
+
+  // associate each photo with the trkpt at its time (Image.setPointReference)
+  for (const p of photos) {
+    const g = nearestPoint(allPts, p.t);
+    p.x = g.x; p.y = g.y; p.ele = g.ele;
+    // SWF's per-photo Image.timer (0..100). Increments 1.2 per animate frame
+    // ONLY while the photo is active (T >= photo.t). Independent of trip time.
+    p.timer = 0;
+  }
+
+  // bounds for EXTENTS state — note: SWF tracks min/maxLat/Lon in projected space
+  // (via updateExtents called with already-scaled lon, lat values)
+  let minLat =  Infinity, maxLat = -Infinity, minLon =  Infinity, maxLon = -Infinity;
+  for (const p of minutes) {
+    if (p.x < minLat) minLat = p.x; if (p.x > maxLat) maxLat = p.x;   // x = lon*400
+    if (p.y < minLon) minLon = p.y; if (p.y > maxLon) maxLon = p.y;   // y = lat*-800
+  }
+  // SWF maps these into camera as (destX1=minLat, destY1=minLon, destX2=maxLat, destY2=maxLon)
+  // The naming is wrong in the SWF but values are bounds-of-projected-x and bounds-of-projected-y.
+  const bounds = { minLat, maxLat, minLon, maxLon };
+
+  const camera = makeCamera(SWF_W, SWF_H);
+
+  // photo image cache
+  const imgCache = new Map();
+  function getImg(file) {
+    let img = imgCache.get(file);
+    if (img) return img;
+    img = new Image();
+    img.src = PHOTO_DIR + file;
+    imgCache.set(file, img);
+    return img;
+  }
+  // pre-warm next few images near current cursor
+  function preloadNear(idxPhoto) {
+    const lo = Math.max(0, idxPhoto - 2);
+    const hi = Math.min(photos.length - 1, idxPhoto + 4);
+    for (let i = lo; i <= hi; i++) getImg(photos[i].file);
+  }
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  // Hi-DPI
+  const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  canvas.width  = SWF_W * DPR;
+  canvas.height = SWF_H * DPR;
+  ctx.scale(DPR, DPR);
+
+  function applyCanvasTransform() {
+    // base placement of "centre" sprite: scale(0.5), translate(203, 205)
+    ctx.translate(BASE_TX, BASE_TY);
+    // canvas._xscale (camera scale, percent)
+    const k = (camera.scale_pct / 100) * BASE_SCALE;
+    ctx.scale(k, k);
+    // innerCanvas._x = -xCoord, _y = -yCoord
+    ctx.translate(-camera.xCoord, -camera.yCoord);
+  }
+
+  // Flash MX stores stroke widths in twips. 0.05 px = 1 twip = hairline,
+  // which renders as a constant 1-screen-pixel stroke regardless of zoom.
+  // We replicate by setting lineWidth = 1 / current_transform_scale.
+  function drawMinutes(activeMinutes) {
+    const baseK = (camera.scale_pct / 100) * BASE_SCALE;
+
+    // minutefront (depth 1 in sprite): grey 3-arm cross, alpha 0.2
+    ctx.strokeStyle = '#333333';
+    ctx.globalAlpha = 0.20;
+    ctx.lineWidth   = 1 / baseK;
+    for (const m of activeMinutes) {
+      ctx.save();
+      ctx.translate(m.x - 0.80, m.y - 0.75);
+      pathMinuteFront(ctx);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // minute octagon (depth 2 in sprite): #c40000, alpha 0.5
+    ctx.strokeStyle = '#c40000';
+    ctx.globalAlpha = 0.50;
+    for (const m of activeMinutes) {
+      const ms = (Math.max(0, m.ele) * 0.8 + 80) / 100;   // Minute.scale formula
+      ctx.save();
+      ctx.translate(m.x, m.y);
+      ctx.scale(ms, ms);
+      ctx.lineWidth = 1 / (baseK * ms);                   // 1 px hairline
+      pathOctagonMinute(ctx);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHours(activeHours) {
+    const baseK = (camera.scale_pct / 100) * BASE_SCALE;
+    ctx.strokeStyle = '#743636';
+    ctx.globalAlpha = 1.0;
+    ctx.lineWidth   = 1 / baseK;                          // hairline
+    for (const h of activeHours) {
+      ctx.save();
+      ctx.translate(h.x, h.y);
+      pathHour(ctx);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // SWF Image.animate fade: timer += 1.2 per animate frame, capped 100.
+  // Final alpha = (timer / 100) * 0.1  (the 0.1 from the placeholder's CXForm).
+  // The SWF declares 120 fps in its header — animationManager_tick fires per frame,
+  // so timer reaches 100 in ~83 frames ≈ 0.7s real. Match that rate exactly.
+  const SWF_FPS = 120;
+  const SWF_FRAME_MS = 1000 / SWF_FPS;     // 8.33 ms
+  // AS2 had _loc1_.timer += 1.2; (~0.7s to reach 100). The fade looked too slow
+  // in our recreation — content lingers in the low-alpha range. Bump to 4.8 per
+  // frame so timer reaches 100 in ~0.17s real, then photos sit at the 10% cap.
+  const FADE_PER_SWF_FRAME = 4.8;
+
+  function drawPhotos(T, activePhotoCount) {
+    const k = (camera.scale_pct / 100) * BASE_SCALE;  // camera*base scale factor
+    // Safety cap only — natural curve at SWF's 2500 SCALE_CAP shrinks rapidly
+    // (1100 px ~1 sec real, ~viewport ~5 sec). 100 here protects drawImage
+    // from the absurd first 1-2 frames where scale would be > 700M px, and is
+    // otherwise invisible.  The bloom-and-shrink dynamic plays out naturally.
+    const MAX_FINAL_SCALE = 100;
+
+    // pre-load lookahead
+    if (activePhotoCount > 0) preloadNear(activePhotoCount - 1);
+
+    for (let i = 0; i < activePhotoCount; i++) {
+      const p = photos[i];
+      const dt = Math.abs(T - p.t);
+      // SWF scale: 3.5 + 9_000_000 / (dt + 1) — input is ms
+      let photoScale = (3.5 + 9_000_000 / (dt + 1)) / 100;
+      const finalScale = photoScale * k;
+      if (finalScale > MAX_FINAL_SCALE) photoScale = MAX_FINAL_SCALE / k;
+
+      const fadeAlpha = p.timer / 100;     // 0..1; final cap by * 0.1 below
+      if (fadeAlpha <= 0) continue;
+      const img = getImg(p.file);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.scale(photoScale, photoScale);
+
+      // Sprite id 0014 ("image") layer order:
+      //   depth 1: outline shape id 0011 placed at scale (1.0, 0.887) — full alpha
+      //   depth 2: placeholder sprite id 0013 placed with CXForm mul a=0.1 — photo content
+      // So the outline draws first underneath, then the photo on top at MAX 10% alpha.
+
+      // Outline: 320 × 212.8 (= 240 × 0.887), #dddddd hairline, full alpha
+      ctx.globalAlpha = 1.0;
+      ctx.strokeStyle = '#dddddd';
+      ctx.lineWidth   = 1 / (k * photoScale);   // hairline
+      ctx.strokeRect(-160, -106.4, 320, 212.8);
+
+      // Side-by-side comparison vs the .mov shows individual photos at ~30-40%
+      // perceived; my prior 0.55 read too solid. 0.35 better matches the .mov.
+      const PHOTO_ALPHA_CAP = 0.35;
+      ctx.globalAlpha = fadeAlpha * PHOTO_ALPHA_CAP;
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, -160, -106.5, 320, 213);
+      }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawDisplay(trkpt) {
+    // SWF: display sprite placed at (13.10, 9.00) scale 0.619
+    // children at design coords (2,2)/(2,26)/(146.95,26)/(301,26) → screen positions:
+    //   time ~ (14, 10), lat ~ (14, 25), lon ~ (104, 25), elevation ~ (199, 25)
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.font = '11px ' + (getComputedStyle(document.body).getPropertyValue('--font') || 'monospace');
+    ctx.textBaseline = 'top';
+    ctx.fillText(fmtFlashDate(trkpt.t),                            14,  10);
+    // SWF param-swap bug: _long shows lat (with N), _lat shows lon (with W).
+    // Preserve the column layout exactly.
+    ctx.fillText(trkpt.raw_lat.toFixed(6) + 'N',                   14,  25);
+    ctx.fillText((-trkpt.raw_lon).toFixed(6) + 'W',               104,  25);
+    ctx.fillText('elevation:' + trkpt.ele.toFixed(6) + 'm',       199,  25);
+    ctx.restore();
+  }
+
+  // ============================================================================
+  // Main loop
+  // ============================================================================
+  const t0 = minutes[0].t;
+  const t1 = minutes[minutes.length - 1].t;
+
+  // The SWF's parser ate one GPX trkpt per animate frame. So when Timo was
+  // stationary (dense trkpts in time), parser-time advanced slowly — the camera
+  // dwelled, the trail thickened, photos bloomed at small dt. When the bus was
+  // moving fast (sparse trkpts), parser-time raced. The pacing came entirely
+  // from GPS sampling density. We replicate it: advance parserIdx through the
+  // full GPX at a fixed real-time rate, set dispT to that trkpt's time.
+  const TRKPT_PER_SEC = 25;     // ~5869 trkpts → ~235s playthrough; .mov was 192s
+  let parserIdx = 0;
+
+  let dispT = t0;
+  let targetT = t0;
+  let lastFrameTime = 0;          // for real-time tick accumulator
+  let physicsAccum = 0;           // fixed-timestep accumulator
+
+  // After EXTENTS is requested, run camera in EXTENTS state
+  function shouldEnterExtents() {
+    return targetT >= t1 - 1000;
+  }
+
+  function frame(now) {
+    // ease dispT toward targetT
+    // SWF's TimeKeeper used a damped second-order spring with steady lag of
+    // ~2.25 frames of advance. Approximated here as a slower first-order ease
+    // — matches the .mov's perceived parser pacing.
+    dispT += (targetT - dispT) * 0.22;
+    if (Math.abs(dispT - targetT) < 1) dispT = targetT;
+
+    const idxMin = lastIndexBefore(minutes, dispT);
+    const idxHr  = lastIndexBefore(hours, dispT);
+    const idxPhoto = lastIndexBefore(photos, dispT);
+
+    const activeMinutes = idxMin >= 0 ? minutes.slice(0, idxMin + 1) : [];
+    const activeHours   = idxHr  >= 0 ? hours.slice(0, idxHr + 1)   : [];
+    const activePhotoCount = idxPhoto >= 0 ? idxPhoto + 1 : 0;
+
+    camera.state = shouldEnterExtents() ? 'EXTENTS' : 'CAMDRAWING';
+
+    // Fixed-timestep physics at the SWF's 120fps animate rate.
+    // The animationManager fires on the loop frame, so spring updates
+    // and photo timer ticks both run at SWF_FPS regardless of render rate.
+    const dt = lastFrameTime ? Math.min(100, now - lastFrameTime) : SWF_FRAME_MS;
+    lastFrameTime = now;
+    physicsAccum += dt;
+    let physicsTicks = 0;
+    while (physicsAccum >= SWF_FRAME_MS && physicsTicks < 8) {
+      physicsAccum -= SWF_FRAME_MS;
+      physicsTicks++;
+      cameraAnimate(camera, activeMinutes, bounds, SWF_W);
+      // Image.animate per-photo timer tick (1.2 per frame, capped 100)
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        if (dispT >= p.t) {
+          if (p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+        } else {
+          p.timer = 0;
+        }
+      }
+    }
+    if (physicsTicks === 0) {
+      // ensure at least one tick when the accumulator is starved
+      cameraAnimate(camera, activeMinutes, bounds, SWF_W);
+    }
+
+    // clear
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, SWF_W, SWF_H);
+
+    // canvas-space draws (clipped to viewport so huge photo scales stay cheap)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, SWF_W, SWF_H);
+    ctx.clip();
+    applyCanvasTransform();
+    // SWF z-order: TrackKeeper.addPoint creates Image first, then Minute,
+    // then Hour — so clipIterator gives markers HIGHER depth than photos.
+    // Markers render ON TOP of photos.
+    drawPhotos(dispT, activePhotoCount);
+    drawMinutes(activeMinutes);
+    drawHours(activeHours);
+    ctx.restore();
+
+    // overlay (screen-space)
+    if (allPts.length > 0) {
+      drawDisplay(nearestPoint(allPts, dispT));
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // ============================================================================
+  // Controls
+  // ============================================================================
+  const scrub = document.getElementById('scrub');
+  const playBtn = document.getElementById('play');
+  const nowEl = document.getElementById('now');
+
+  function setT(t, jump = false) {
+    targetT = Math.max(t0, Math.min(t1, t));
+    if (jump) dispT = targetT;
+    const f = (targetT - t0) / (t1 - t0);
+    const sv = Math.round(f * +scrub.max);
+    if (+scrub.value !== sv) scrub.value = sv;
+    nowEl.textContent = fmtFlashDate(targetT).slice(0, 19);
+  }
+
+  scrub.addEventListener('input', e => {
+    stopPlay();
+    const f = +e.target.value / +e.target.max;
+    setT(t0 + f * (t1 - t0));
+    parserIdx = Math.floor(f * (allPts.length - 1));   // keep parser in sync
+  });
+
+  let playing = false, lastTick = 0;
+  function tickPlay(now) {
+    if (!playing) return;
+    if (lastTick) {
+      const dt = now - lastTick;
+      parserIdx += TRKPT_PER_SEC * dt / 1000;
+      if (parserIdx >= allPts.length - 1) {
+        parserIdx = allPts.length - 1;
+        setT(allPts[allPts.length - 1].t);
+        stopPlay();
+        return;
+      }
+      // LERP between consecutive trkpts so dispT advances smoothly
+      // (parserIdx is fractional; whole part = current trkpt, frac = lerp)
+      const idx = Math.floor(parserIdx);
+      const frac = parserIdx - idx;
+      const t = allPts[idx].t + frac * (allPts[idx + 1].t - allPts[idx].t);
+      setT(t);
+    }
+    lastTick = now;
+    requestAnimationFrame(tickPlay);
+  }
+  function startPlay() {
+    if (playing) return;
+    playing = true; lastTick = 0;
+    playBtn.textContent = 'PAUSE';
+    if (targetT >= t1 - 1) { parserIdx = 0; setT(t0, true); }
+    requestAnimationFrame(tickPlay);
+  }
+  function stopPlay() {
+    playing = false;
+    playBtn.textContent = 'PLAY';
+  }
+  playBtn.addEventListener('click', () => playing ? stopPlay() : startPlay());
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === ' ')              { e.preventDefault(); playing ? stopPlay() : startPlay(); }
+    else if (e.key === 'ArrowRight') { stopPlay(); setT(targetT + 60 * 60 * 1000); }
+    else if (e.key === 'ArrowLeft')  { stopPlay(); setT(targetT - 60 * 60 * 1000); }
+  });
+
+  setT(t0, true);
+
+  // ?seek=0..1 jumps to that fraction of the trip and skips to steady state.
+  // ?play=1 starts playing immediately. Used for headless screenshots.
+  const params = new URLSearchParams(location.search);
+  if (params.has('seek')) {
+    const f = Math.max(0, Math.min(1, +params.get('seek')));
+    setT(t0 + f * (t1 - t0), true);
+    // Set camera state correctly before converging — at end of trip the SWF's
+    // buildFinished() switches to EXTENTS to zoom out and show the full trip.
+    camera.state = (f >= 0.999) ? 'EXTENTS' : 'CAMDRAWING';
+    // run physics for many ticks to converge camera/photos
+    for (let k = 0; k < 200; k++) {
+      cameraAnimate(camera, minutes.slice(0, lastIndexBefore(minutes, dispT) + 1), bounds, SWF_W);
+      for (const p of photos) {
+        if (dispT >= p.t && p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+      }
+    }
+  }
+  if (params.get('play') === '1') startPlay();
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
