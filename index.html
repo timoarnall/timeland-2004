@@ -32,11 +32,11 @@
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: var(--body-bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
-body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-#stage { position: relative; width: 500px; height: 500px; background: var(--artefact-bg); border-radius: 3px; overflow: hidden; }
-canvas { display: block; width: 500px; height: 500px; background: var(--artefact-bg); border-radius: 3px; }
+body { display: flex; flex-direction: column; align-items: stretch; justify-content: center; }
+#stage { position: relative; width: 100%; aspect-ratio: 1 / 1; background: var(--artefact-bg); border-radius: 3px; overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; background: var(--artefact-bg); border-radius: 3px; }
 #controls {
-  width: 500px; padding: 26px 0 0;
+  width: 100%; padding: 26px 0 0;
   display: flex; align-items: center; gap: 18px;
 }
 #play {
@@ -388,11 +388,26 @@ function pathHour(ctx) {
   // ============================================================================
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
-  // Hi-DPI
-  const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  canvas.width  = SWF_W * DPR;
-  canvas.height = SWF_H * DPR;
-  ctx.scale(DPR, DPR);
+  // The canvas fills its CSS container at any size; sync the drawing buffer
+  // so we don't blur on hosts wider than 500px. canvasScale maps SWF-design
+  // units (500-wide) to drawing-buffer pixels.
+  let canvasScale = 1;
+  function syncCanvasSize() {
+    const cssW = canvas.clientWidth  || SWF_W;
+    const cssH = canvas.clientHeight || SWF_H;
+    const css  = Math.max(cssW, cssH);
+    const dpr  = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const buf  = Math.max(1, Math.round(css * dpr));
+    if (canvas.width  !== buf) canvas.width  = buf;
+    if (canvas.height !== buf) canvas.height = buf;
+    canvasScale = buf / SWF_W;
+  }
+  syncCanvasSize();
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncCanvasSize).observe(canvas);
+  } else {
+    window.addEventListener('resize', syncCanvasSize);
+  }
 
   function applyCanvasTransform() {
     // base placement of "centre" sprite: scale(0.5), translate(203, 205)
@@ -616,7 +631,7 @@ function pathHour(ctx) {
     const activePhotoCount = idxPhoto >= 0 ? idxPhoto + 1 : 0;
 
     // clear
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
     ctx.fillStyle = bgOverride || '#f9f8f6';   // artefact bg — matches CSS, subtle warm grey
     ctx.fillRect(0, 0, SWF_W, SWF_H);
 
