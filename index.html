@@ -686,19 +686,47 @@ function pathHour(ctx) {
   const params = new URLSearchParams(location.search);
   if (params.has('seek')) {
     const f = Math.max(0, Math.min(1, +params.get('seek')));
-    parserIdx = Math.floor(f * (allPts.length - 1));
-    targetT = allPts[parserIdx].t;
-    setT(targetT, true);
-    timeD = 0;
-    camera.state = (f >= 0.999) ? 'EXTENTS' : 'CAMDRAWING';
-    // Run physics for many ticks to converge camera and ramp photo timers
-    for (let k = 0; k < 200; k++) {
-      const idx = lastIndexBefore(minutes, dispT);
-      cameraAnimate(camera, idx >= 0 ? minutes.slice(0, idx + 1) : [], bounds, SWF_W);
+    const targetIdx = Math.max(0, Math.min(allPts.length - 1, Math.floor(f * (allPts.length - 1))));
+
+    // Settle photo timers up to ~targetIdx-PLAY_IN (long-active photos at full
+    // alpha so the trail of past-stills is correct).
+    const PLAY_IN = 90;   // ~3 sec real of "play-in" preserves spring transient
+    const settleIdx = Math.max(0, targetIdx - PLAY_IN);
+    for (let k = 0; k < 600; k++) {
+      const t = allPts[settleIdx].t;
       for (const p of photos) {
-        if (targetT >= p.t && p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+        if (t >= p.t && p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
       }
     }
+
+    // Initialize parser/camera at the settle point, then simulate PLAY through
+    // the last PLAY_IN frames so the camera spring has natural transient state
+    // (matches the SWF's mid-motion look at any moment).
+    parserIdx = settleIdx;
+    setT(allPts[parserIdx].t, true);
+    timeD = 0;
+    camera.initialized = false;
+    camera.state = (f >= 0.999) ? 'EXTENTS' : 'CAMDRAWING';
+
+    for (let k = 0; k < PLAY_IN && parserIdx < targetIdx; k++) {
+      parserIdx += 1;
+      setT(allPts[parserIdx].t);
+      // TimeKeeper damped spring (verbatim AS2)
+      timeD += (dispT - targetT) * 4;
+      timeD *= 0.1;
+      if (isNaN(timeD)) timeD = 0;
+      dispT -= timeD;
+      // Camera animate
+      const idx = lastIndexBefore(minutes, dispT);
+      cameraAnimate(camera, idx >= 0 ? minutes.slice(0, idx + 1) : [], bounds, SWF_W);
+      // Photo timer
+      for (const p of photos) {
+        if (targetT >= p.t) {
+          if (p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+        }
+      }
+    }
+    if (f >= 0.999) camera.state = 'EXTENTS';
   }
   if (params.get('play') === '1') startPlay();
 
