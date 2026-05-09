@@ -6,7 +6,8 @@
 <title>Time that land forgot</title>
 <style>
 :root {
-  --bg: #f6f3ed;            /* warm neutral off-white — distinguishes the artefact */
+  --page-bg: #ffffff;       /* page background — matches an elasticspace-style white page */
+  --artefact-bg: #f4f3f1;   /* very subtle warm grey — distinguishes the canvas artefact */
   --fg: #000000;
   --muted: #888888;
   --accent: #c40000;
@@ -14,37 +15,37 @@
   --base: 11px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: var(--bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
+html, body { background: var(--page-bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
 body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-#stage { position: relative; width: 500px; height: 500px; background: var(--bg); }
-canvas { display: block; width: 500px; height: 500px; background: var(--bg); }
+#stage { position: relative; width: 500px; height: 500px; background: var(--artefact-bg); }
+canvas { display: block; width: 500px; height: 500px; background: var(--artefact-bg); }
 #controls {
-  width: 500px; padding: 14px 0 0;
-  display: flex; align-items: center; gap: 14px;
+  width: 500px; padding: 26px 0 0;
+  display: flex; align-items: center; gap: 18px;
 }
 #play {
   flex: 0 0 auto;
-  width: 22px; height: 22px;
+  width: 32px; height: 32px;
   border-radius: 50%;
-  background: #c9c4ba;
+  background: #e6e4e0;
   border: 0; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: opacity 120ms ease;
+  transition: background 120ms ease;
 }
-#play:hover { background: #a8a298; }
-#play svg { width: 9px; height: 9px; fill: #6e6963; display: block; }
+#play:hover { background: #d4d2cd; }
+#play svg { width: 11px; height: 11px; fill: #8a847b; display: block; }
 #scrub {
   flex: 1 1 auto;
-  -webkit-appearance: none; height: 6px; background: #d8d3ca;
+  -webkit-appearance: none; height: 6px; background: #ebe9e5;
   border-radius: 3px; outline: none; margin: 0;
   cursor: pointer;
 }
 #scrub::-webkit-slider-thumb {
   -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
-  background: #8a847b; cursor: pointer; border: 0;
+  background: #b0aba2; cursor: pointer; border: 0;
 }
 #scrub::-moz-range-thumb {
-  width: 14px; height: 14px; border-radius: 50%; background: #8a847b; cursor: pointer; border: 0;
+  width: 14px; height: 14px; border-radius: 50%; background: #b0aba2; cursor: pointer; border: 0;
 }
 </style>
 </head>
