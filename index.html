@@ -165,7 +165,13 @@ const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const pad2 = n => String(n).padStart(2, '0');
 function fmtFlashDate(t) {
-  const d = new Date(t + 2 * 3600 * 1000);   // CEST = UTC+2
+  // Display the literal Z text label of the trkpt the way the SWF did. Flash 6
+  // ran Date.toString() in the player's local TZ; on Even's CEST machine, the
+  // bug-shifted Date (with text parsed as local) printed back as the original
+  // Z text labelled "GMT+0200". For direct comparison with the .mov, render
+  // the same label here. (The label is technically wrong — Iceland is GMT not
+  // CEST — but it's what the original showed.)
+  const d = new Date(t);   // true UTC, no shift
   return DAYS[d.getUTCDay()] + ' ' + MONTHS[d.getUTCMonth()] + ' ' + pad2(d.getUTCDate())
        + ' ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds())
        + ' GMT+0200 ' + d.getUTCFullYear();
