@@ -6,9 +6,12 @@
 <title>Time that land forgot</title>
 <style>
 :root {
-  /* Body bg is transparent so the host page (whatever theme) shows through.
-     The artefact canvas keeps its own off-white. UI controls use translucent
-     greys that read on either a light or a dark host. */
+  /* Body matches the host page colour explicitly (white in light mode,
+     near-black in dark mode) — Safari does not always paint a transparent
+     iframe through to the host page bg. The stage itself is the artwork
+     and stays warm light grey in both modes. */
+  color-scheme: light dark;
+  --body-bg: #ffffff;
   --artefact-bg: #f9f8f6;
   --fg: #000000;
   --muted: #888888;
@@ -21,8 +24,14 @@
   --scrub-track: rgba(128,128,128,0.22);
   --scrub-thumb: #8a847b;
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --body-bg: #111;       /* matches elasticspace dark --paper */
+    --fg: #cccac5;
+  }
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { background: transparent; color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
+html, body { background: var(--body-bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
 body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 #stage { position: relative; width: 500px; height: 500px; background: var(--artefact-bg); border-radius: 3px; overflow: hidden; }
 canvas { display: block; width: 500px; height: 500px; background: var(--artefact-bg); border-radius: 3px; }

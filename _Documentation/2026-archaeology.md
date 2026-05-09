@@ -653,11 +653,18 @@ otherwise.
 - **The empty `cameraManager()` function.** Dead code that shipped.
   Not worth porting.
 
-## VII. Bugs preserved on purpose
+## VII. Bugs preserved on purpose (and the two later reverted)
 
 Six bugs in the original code were preserved in the port for archival
 fidelity. Each is documented in the `index.html` comments so the next
 reader doesn't fix them.
+
+On 2026-05-09 (after the writeup first posted), two of the six were
+reverted: VII.1 (the lat/lon scale swap) and VII.2 (the GMT+0200
+timezone label). Reasons and principle in §VII.7. The reversion was
+made by Timo in another terminal session; this document records the
+decision, not the diff. Sections VII.1 and VII.2 below preserve the
+original analysis and add the post-revert state at the end of each.
 
 ### VII.1 The lat/lon scale swap in display
 
@@ -677,12 +684,19 @@ The label is also swapped between fields: `_long` gets "N" (a
 latitude cardinal); `_lat` gets "W" (a longitude cardinal). Two bugs
 on top of each other.
 
-The JS preserves both:
+The JS originally preserved both:
 
 ```js
 ctx.fillText(trkpt.raw_lat.toFixed(6) + 'N', 14, 25);     // position of _long
 ctx.fillText((-trkpt.raw_lon).toFixed(6) + 'W', 104, 25);  // position of _lat
 ```
+
+**Reverted 2026-05-09.** The display now reads true latitude in the
+"N" field and true longitude in the "W" field, so a viewer reading
+the coordinates can map them to a real point in Iceland. The
+displayed value used to be ~10.5 °W (mid-Atlantic) regardless of
+where the trip actually was; the corrected display reads ~21.9 °W
+in the Reykjavík area, etc. See §VII.7 for the reversion criterion.
 
 ### VII.2 The "GMT+0200" label that's actually wrong
 
@@ -692,8 +706,8 @@ on Even's CEST machine printed "GMT+0200". The label has nothing to
 do with Iceland (which is GMT, no DST). It's the SWF's bug printed
 twice over.
 
-The JS preserves the label format. The underlying time variable is
-true UTC (verified by the Geysir test, see X.5).
+The JS originally preserved the label format. The underlying time
+variable is true UTC (verified by the Geysir test, see X.5).
 
 ```js
 function fmtFlashDate(t) {
@@ -704,6 +718,15 @@ function fmtFlashDate(t) {
           ' GMT+0200 ' + d.getUTCFullYear();
 }
 ```
+
+**Reverted 2026-05-09.** The label now reads the actual UTC time in
+Iceland (which is on UTC year-round, no DST). The previous label
+asserted CEST, two hours ahead of the trip's real local time; for
+anyone reading the clock to follow the trip — when did we leave
+Höfn, when did we reach Reykjavík — the label was actively
+misleading. The underlying time variable was always true UTC, so
+the change is a label-format change only, not a recomputation.
+See §VII.7.
 
 ### VII.3 The squashed projection
 
@@ -775,6 +798,58 @@ harmless because nothing else uses these names at the global level.
 Characteristic of the era and worth recording.
 
 The JS port uses `let` everywhere (no leak).
+
+### VII.7 The reversion criterion: charm vs experience-cost
+
+VII.1 and VII.2 were preserved on the same logic as the others —
+this is what the original showed; reproducing it is part of the
+port's archival fidelity. After living with the live page for a few
+days, Timo named the criterion that overruled that logic:
+
+> The clock at the top reads two hours later than it should, because
+> that is the way the original showed it. The longitude reads as a
+> value somewhere in the middle of the Atlantic, because that is the
+> way the original showed it. I would like to change this, to
+> correct the bugs, to make it more real. Should bugs be preserved?
+> If they are charming, but not if they detract from our ability to
+> experience something in the data.
+
+The remaining preserved bugs all sit on the *charm* side:
+
+- **VII.3 squashed projection.** The 2:1 lat/lon ratio is the visual
+  identity of the piece, the reason Iceland reads as a tall
+  vertically-stretched form rather than a flat outline. Removing it
+  produces a different artefact. Stays.
+- **VII.4 `loadfinished` typo.** Has no visible effect (Flash clamps
+  `_alpha` at 100). The typo is preserved as a code-comment record
+  of the era; the JS doesn't have the bug to begin with. Stays.
+- **VII.5 `dateConvert` setMonth-last ordering.** The comment in the
+  changelog naming the fix is part of the artefact. JS uses
+  `Date.UTC()` and doesn't have the bug. Stays.
+- **VII.6 `refocus` scope leak.** Era-typical AS2 sloppiness, no
+  visible effect. JS uses `let`. Stays.
+
+VII.1 and VII.2 sat on the *experience-cost* side. Both are values
+the viewer reads off the screen as part of *following the trip*: the
+clock answers "what time is it on this trip?", the lat/lon answer
+"where on the map are we?". Reading wrong values for both made the
+piece less legible *as a record of Iceland in July 2004*, which is
+what it is supposed to be a record of.
+
+The criterion generalises. Every preserved-bug call in software
+archaeology can be tested against: *does this bug add to the
+character of the original, or does it obstruct the thing the
+original was trying to communicate?* If character: keep it. If
+obstruction: revert it, and note the revert in the documentation
+(this section) and in the code (a comment at the call site). The
+original analysis stays in §VII.1 / §VII.2 above so a future reader
+can see the bug, see the call to preserve it, and see the call to
+revert it, in that order.
+
+The deeper point: archival fidelity to a piece of work is fidelity
+to *what the work was trying to do*, not to every byte of how it
+once did it. Bug-fidelity is a tactic, not the goal. When the
+tactic and the goal point opposite directions, the goal wins.
 
 ## VIII. The visual arc (from the .mov frames)
 
@@ -1020,8 +1095,13 @@ Twelve items, in order of session:
    hypothesis before constant-ratio test undid it).
 7. Photo activation timing (`dispT >= photo.t` instead of `targetT >= photo.t`).
 8. Marker z-order (drew markers underneath photos).
-9. Photo bloom cap (60 → 2 → 5 → 100; only 100 catches the
-   first-frame absurdity invisibly).
+9. Photo bloom cap (60 → 2 → 5 → 100 → 80). 100 hid the
+   first-frame absurdity but produced a visible step-down where the
+   natural curve later crossed under the cap — photos sat at the cap
+   for ~80 s of trip-time then suddenly shrank, most legible in the
+   dense Reykjavík sequence. 80 puts the cap at the curve's value at
+   the first post-activation tick so the two agree at that moment
+   and the bloom decays smoothly. See XV.4.
 10. `SCALE_CAP` (bumped from 2500 to 5000 then back).
 11. Seek-to-converge (killed the camera spring transient).
 12. "Matches closely" as a description.
@@ -1104,7 +1184,7 @@ The 2004 closing paragraph asked for a Steenbeck. The 2026 recreation
 has a scrub bar. The wish in the original made it into the
 restoration, twenty-two years later.
 
-## XV. The side-by-side harness, in nine iterations
+## XV. The side-by-side harness, in thirteen iterations
 
 Halfway through the session the pattern of "make a guess, ask Timo, get
 correction, iterate" stopped scaling. Timo's questions were getting
@@ -1114,9 +1194,10 @@ at the matching parser-time on the right, composite to MP4 and GIF,
 look at frames side-by-side. Once the harness existed, every audit
 collapsed from "judge by feel" to "look at the divergent pixels".
 
-The harness itself took nine iterations to get right. Recorded here
-because the bugs in the harness are themselves instructive, and because
-the iteration is preserved on disk as `_Documentation/comparison_*.{mp4,gif}`.
+The harness itself took thirteen iterations to get right. Recorded
+here because the bugs in the harness are themselves instructive, and
+because the iteration is preserved on disk as
+`_Documentation/comparison_*.{mp4,gif}`.
 
 | Version | Bug | Fix | File |
 |---|---|---|---|
@@ -1126,14 +1207,51 @@ the iteration is preserved on disk as `_Documentation/comparison_*.{mp4,gif}`.
 | `v6` | Captured half before the bisect fix, half after | Re-render | `comparison_v6.{mp4,gif}` |
 | `v7` | Display-time was 2 hours off because `fmtFlashDate` still added the +2h CEST shift | Dropped the shift; matched the SWF's literal Z-text-as-CEST format | `comparison_v7.{mp4,gif}` |
 | `v8` | Mac was on PDT; Python's `datetime.utcfromtimestamp` interpreted naive timestamps as Pacific local, shifting all OCR'd times by 7 hours. Anchor table was off by hours. | Wrap all timestamp arithmetic in explicit UTC | `comparison_v8.{mp4,gif}` |
-| `v9` | All previous bugs fixed. Display showed eased-time instead of parser-time (subtle phase mismatch) | `drawDisplay()` now reads `allPts[parserIdx]` not `nearestPoint(allPts, dispT)` | `comparison_v9.{mp4,gif}` |
+| `v9` | All previous bugs fixed. Display read eased-time, parser advanced on parser-time, so the timestamp shown to the viewer was a fraction of a second behind the trail-state being drawn — the photo and the label were describing different moments | `drawDisplay()` now reads `allPts[parserIdx]` not `nearestPoint(allPts, dispT)` | `comparison_v9.{mp4,gif}` |
+| `v10` | Headless-seek capture only ever showed steady-state frames. Spring transients (camera settling, photo bloom decay, marker chase during fast motion) were never visible side-by-side. | Switched from per-frame seek to recording the live page playing through, then OCR-matching recording frames to .mov frames by displayed timestamp | `comparison_v10.{mp4,gif}` |
+| `v10_strict` | Showed only frames with an exact-time match (within 1 trip-minute), blank-bg on the right otherwise. Confirmed only 36 of 192 .mov frames had a strictly-matched recording frame; the recreation runs ~5% slower than the .mov under screen-recording load | Kept as a reference for "how much is genuine match vs interpolation"; not the build to watch | `comparison_v10_strict.{mp4,gif}` |
+| `v11` | Recording done on the warm-grey artefact background, which doubled the right-panel contrast against the .mov's white | Added a `?bg=white` URL param that overrides the artefact bg for screen-recording only, leaving the live page palette intact | `comparison_v11.{mp4,gif}` |
+| `v12_allframes` | 1 fps composite hid the spring transients we'd just exposed. Visible "pauses" came from OCR misses repeating the same recreation frame against many .mov frames | Extracted both sources at native frame rate (mov 25 fps, recording 30 fps), interpolated rec-frame timestamps between OCR'd anchors, matched all 4803 .mov frames to nearest rec frame | `comparison_v12_allframes.{mp4,gif}` |
+| `v13_allframes` | Marker octagons in the recreation read smaller than in the .mov side panel, because the .mov was screen-recorded at native 478 px and the side-by-side upsamples it to 500. The recreation rendered at native 500 retina, no upsample, so its design-unit primitives looked subtly smaller | Bumped the octagon design size +15 % (the only constant in the port that doesn't match the SWF byte-for-byte; flagged in code as a recording-rig compensation, not a fidelity fix). Re-OCR'd the longer 215 s recording for better anchor coverage (211/215 frames). 3744 unique rec frames matched into 4803 mov frames | `comparison_v13_allframes.{mp4,gif}` |
 
-v9 is the canonical synced version. The remaining differences between
-v9's two panels are real but minor: a small lead/lag in photo
-appearance (the SWF used `loadMovie` async, mine pre-caches and shows
-photos instantly on activation), and a small filmstrip-persistence
-difference (where the camera centring puts older photos in or out of
-view).
+v13 is the canonical synced version, superseding v9. The earlier
+"canonical" claim about v9 was true only for headless-seek capture —
+once we wanted to see actual spring transients, the seek-based
+approach had to go.
+
+The remaining differences between v13's two panels are small in
+pixel terms and load-bearing in experiential terms. They are not
+"polish-level" residuals; they are the part of the work that decides
+whether the recreation feels like the original or feels like a
+diagram of it.
+
+Photo lead/lag. The SWF used `loadMovie` async, so a photo's
+appearance is gated by network/cache latency from 2004 — the image
+*arrives*, with the small flicker of arrival. The recreation
+pre-caches everything and shows photos instantly on activation. In
+pixel-diff terms this is a phase shift of fractions of a second; in
+felt terms it removes the sense that the trip is being re-discovered
+as it plays, and replaces it with the sense that everything is
+pre-known. Open. Worth fixing by introducing a synthetic short delay
+on activation, or by reading the SWF's actual load-order and
+honouring it.
+
+Filmstrip persistence. The camera centring decides whether older
+photos stay in view as the trip moves on, or fall out. The SWF and
+the recreation diverge at the edges by a few centring-pixels, which
+in the dense Reykjavík and Geysir clusters is the difference between
+a photo persisting through five minutes of trip-time and being lost
+in two. This is the heart of what Even called "textural clusters of
+experience". Open.
+
+End-of-trip drift. Safari hits ~25–28 fps under live screen-recording
+load, the SWF's effective rate is 30 fps, so the recording's
+parser-time lags the .mov's by a few percent that compound over 192 s
+into seconds of phase error at the end. The drift is a
+recording-rig artefact, not a recreation bug — the live page runs
+at full rate. But it means the side-by-side at the back end of the
+trip is not a fair comparison. A deterministic test-mode that ticks
+both sources from the same wall-clock would dissolve it.
 
 ### XV.1 The OCR-driven sync technique
 
@@ -1171,12 +1289,112 @@ updates dispT for the *next* frame to read. One-frame phase lag
 across every frame.
 
 The JS port had the order reversed (parser → timeKeeper → cameraKeeper
-→ images) which would mean camera reads the *current* frame's eased
-dispT. The visible effect is small (~33 ms phase) but it's a system-
-level pattern divergence. Recorded here for the next archaeology;
-not yet fixed in `index.html`.
+→ images) which means camera reads the *current* frame's eased
+dispT. The absolute lag is one frame (~33 ms at 30 fps), but it's a
+phase between two coupled springs running at the same time, on the
+same data — exactly the relationship that produces the *settling*
+the viewer reads as "alive". Reversing the registration order lets
+camera and time act on the same frame instead of one trailing the
+other, which subtly changes the chase behaviour at every transition
+between motion and rest. Not yet fixed in `index.html`. Open.
 
-### XV.3 The "ground truth first" lesson
+### XV.3 From headless seek to live-recorded playback
+
+By v9 the harness was as good as headless capture could make it. Each
+right-panel frame was the recreation rendered at the exact trip-time
+the .mov displayed, written out by Chromium with `?seek=0..1`. The
+problem became visible the moment Timo asked about settling
+behaviour: the right panel never showed any. Camera settle, photo
+bloom decay, marker chase during fast motion — every transient was
+already gone by the time the seek-and-screenshot ran. We were
+comparing the .mov's live evolution to the recreation's steady state.
+
+The shift in v10 was to stop seeking and start recording. Position
+Safari at the top-left of the screen, load the page with `?play=1` so
+it auto-plays, run `ffmpeg avfoundation` for 210 s while the
+recreation plays through. Then extract that recording at 1 fps,
+OCR the displayed timestamp out of each frame, build a manifest of
+"recording-frame N → trip-time T", and match each .mov frame's
+displayed time to its nearest recording-frame time.
+
+Two things fall out of doing it this way. The right panel now shows
+real transients — the camera actually overshoots and settles, the
+photo bloom curve actually decays, markers actually catch up.
+Comparison becomes about behaviour, not about end states.
+
+But the recreation no longer runs at the same speed as the .mov.
+Safari under live screen-recording load drops to ~25–28 fps, vs the
+SWF's effective 30 fps. So the recording's parser-time lags the
+.mov's by a few percent, accumulating over 192 s into seconds of
+end-of-trip drift. v10_strict made this drift visible by showing
+blanks where no within-1-minute match existed (only 36 of 192 mov
+frames had one). The pragmatic fix in v11+ was nearest-time matching
+without a tolerance, accepting a few seconds of phase error as the
+price of seeing actual transients.
+
+The lesson, narrower than XV.6 below: when the question is *does
+the recreation behave like the original*, capture has to preserve
+the temporal evolution of both panels, not freeze either one. A
+screen-recording rig with timestamp OCR is the cheap way; a
+deterministic test-mode that ticks both at the same wall-clock rate
+would be the principled way.
+
+### XV.4 The photo bloom step-down
+
+A specific bug worth recording. SWF photos enter at huge scale and
+shrink fast: `scale = 3.5 + 9_000_000 / (|dt|+1) %`, where `dt` is
+seconds from the photo's exact time. At dt=0 this is ~9M %, capped
+in the SWF at `SCALE_CAP = 2500 %`. The intended dynamic is a hard
+peak that decays over ~60 seconds back into the camera's normal
+zoom range.
+
+In porting, an early safety cap of `MAX_FINAL_SCALE = 100` was added
+to keep `drawImage` from being called at absurd sizes during the
+first one or two frames after activation. Because the natural curve
+falls below 100 at around dt ≈ 80 s, the cap was doing exactly the
+wrong thing: photos sat at the cap for ~80 s, then suddenly
+step-shrank when the natural curve crossed under the cap. Visible as
+"the images jump from medium to small after settling", most obvious
+in the dense Reykjavík sequence.
+
+Two fixes were considered. Remove the cap entirely, and let
+`drawImage` handle absurd sizes via canvas viewport clipping (cheap
+because the photo is clipped to a 500-px viewport before raster).
+Or move the cap to where the natural curve would land at the first
+post-activation tick, so the cap and the curve agree at that moment
+and there is no perceptible step. The second was chosen
+(`MAX_FINAL_SCALE = 80`, computed from median GPS gap × max camera
+scale): it's defensive against pathological dt values that could
+otherwise still ship megapixel rasters to the GPU.
+
+A reminder that "safety caps" without checking whether the underlying
+curve crosses them are silent visual bugs.
+
+### XV.5 The marker-scale tweak (and what it admits)
+
+Up to v12 the recreation rendered SWF design-unit shapes
+byte-for-byte: octagon vertices at radius 0.20, scaled by the same
+camera factor the SWF uses. In the side-by-side, the markers in the
+right panel read consistently smaller than in the left.
+
+The reason is the rig, not the recreation. The .mov was screen-
+recorded at the SWF's native 478 × 478 px and is upsampled to
+500 × 500 in the composite. The recreation is rendered at native
+500 × 500 retina with no upsample. So every primitive in the .mov
+panel gets a ~5 % size bonus from interpolation that the recreation
+panel doesn't see. Photos compensate because they're raster and
+their visual scale is dominated by the bloom math; line-art markers,
+being design-unit primitives, show the difference cleanly.
+
+v13 bumps the octagon design size by +15 % (slightly more than the
+5 % rig delta, to account for stroke-width perception). It is the
+only constant in the port that doesn't match the SWF byte-for-byte,
+and it's marked in `index.html` as a side-by-side rig compensation,
+not a fidelity fix. The live page (without the comparison panel)
+should arguably revert to the SWF-faithful 0.20 radius. Recorded
+here as an open question.
+
+### XV.6 The "ground truth first" lesson
 
 The harness above is the move that should have been made on day one.
 Every iteration of code-reading, AS2 porting, and parameter-tweaking
