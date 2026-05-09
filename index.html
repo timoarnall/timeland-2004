@@ -599,7 +599,7 @@ function pathHour(ctx) {
 
     // clear
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    ctx.fillStyle = '#f9f8f6';   // artefact bg — matches CSS, subtle warm grey
+    ctx.fillStyle = bgOverride || '#f9f8f6';   // artefact bg — matches CSS, subtle warm grey
     ctx.fillRect(0, 0, SWF_W, SWF_H);
 
     // canvas-space draws (clipped to viewport so huge photo scales stay cheap)
@@ -692,6 +692,13 @@ function pathHour(ctx) {
   // ?seek=0..1 jumps to that fraction of the trip and skips to steady state.
   // ?play=1 starts playing immediately. Used for headless screenshots.
   const params = new URLSearchParams(location.search);
+  const bgOverride = params.get('bg') === 'white' ? '#ffffff' : null;
+  if (bgOverride) {
+    document.documentElement.style.background = bgOverride;
+    document.body.style.background = bgOverride;
+    document.getElementById('stage').style.background = bgOverride;
+    document.getElementById('c').style.background = bgOverride;
+  }
   if (params.has('seek')) {
     const f = Math.max(0, Math.min(1, +params.get('seek')));
     // BUG FIX: trkpts aren't evenly spaced in time. seek fraction must map
