@@ -78,11 +78,10 @@ const SPRING_K_CAM    = 1 / 40;    // CAMDRAWING spring
 const SPRING_DAMP_CAM = 0.69;
 const SPRING_K_EXT    = 1 / 3;     // EXTENTS spring (for bbox)
 const SPRING_DAMP_EXT = 0.59;
-const SCALE_CAP       = 2500;      // matches SWF v19 exactly. Bumping this
-                                   // doubled photo bloom sizes and made stops
-                                   // feel artificially close. With trkpt-paced
-                                   // playback, stops dwell long enough for the
-                                   // SWF's 2500 cap to feel intimate.
+const SCALE_CAP       = 3800;      // older SWF cap; 2500 (v19) felt too zoomed
+                                   // out during walking. 3800 brings micro
+                                   // movements into view while photos settle
+                                   // at a readable scale.
 const TRAIL_WINDOW    = 15;        // last 15 minutes used for bbox
 const NEW_MINUTE_MS   = 30000;     // new minute marker gap
 
@@ -447,10 +446,9 @@ function pathHour(ctx) {
     const k = (camera.scale_pct / 100) * BASE_SCALE;  // camera*base scale factor
     // Clamp via the natural value at first post-activation tick, so the cap
     // and natural curve agree at that moment — no perceptible step-down.
-    // At median GPS gap of 14 sec and max camera (k=12.5), tick 1 finalScale
-    // ≈ 80. Keeping the cap there means tick 0's absurd value clamps to the
-    // same size tick 1 would naturally show, then shrinks smoothly from there.
-    const MAX_FINAL_SCALE = 80;
+    // Scales with k: at SCALE_CAP=3800, k=19 (vs 12.5 at 2500), so the
+    // first-tick natural value rises proportionally → 80 × (19/12.5) ≈ 122.
+    const MAX_FINAL_SCALE = 122;
 
     // pre-load lookahead
     if (activePhotoCount > 0) preloadNear(activePhotoCount - 1);
