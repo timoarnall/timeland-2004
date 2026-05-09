@@ -949,11 +949,29 @@ No mythical fuller GPX. Same Iceland data, displayed wrong.
   spring settles, photos bloom.
 - Motion: GPS samples sparsely (every 10–30 s), parser races,
   camera struggles to keep up, photos pass quickly.
+- **The hidden second consequence: empty time disappears.** The 2004
+  GPX has overnight gaps where the GPS was switched off. Walking the
+  array, those gaps take zero frames; the parser just steps over
+  them. The 2004 blog post named this directly: *"There will be
+  discontinuities in the tracklogs as the GPS is switched off
+  during standstill and nights. Currently the system smoothes
+  tracklog time to make breaks seem more like quick transitions."*
+  The first port advanced time linearly across the calendar, which
+  meant overnight gaps became long boring stretches with photographs
+  sitting unchanged for tens of seconds while nothing happened. The
+  trkpt-paced advance fixed both problems with one move: stops
+  dwell, empty time disappears.
 - Initial port used a fixed linear advance (3 min for whole trip).
-  Compressed Geysir's 32-minute stop into 1.5 real seconds.
+  Compressed Geysir's 32-minute stop into 1.5 real seconds and
+  inflated overnight nothing into ten seconds of static screen.
 - Fix: `parserIdx += 1` per physics tick. 5,869 trkpts / 30 fps =
-  195 s, matches .mov's 192 s. Stops dwell, motion races. Commit
-  `94e6170`.
+  195 s, matches .mov's 192 s. Stops dwell, motion races, nights
+  vanish. Commit `94e6170`.
+- Surfaced after publication by Even Westvang reading the writeup:
+  *"Interesting that Claude's first pass was just a very ordinary
+  photo + gpx track rendering and had lots of long overnight
+  pauses. Boring indeed."* The "boring overnight pauses" half is
+  the half this section originally underplayed. Folded in here.
 
 ### X.8 Marker z-order
 
@@ -1085,3 +1103,54 @@ background, photographs blooming on a GPS trail in Iceland in July
 The 2004 closing paragraph asked for a Steenbeck. The 2026 recreation
 has a scrub bar. The wish in the original made it into the
 restoration, twenty-two years later.
+
+## XV. The artist-coder problem
+
+A pattern Timo named after publication, worth recording for any
+future archaeology. In every place where the SWF had an idiosyncratic
+choice, Claude's first pass was the textbook implementation:
+
+| What Even wrote in 2004 | What Claude built first |
+|---|---|
+| Parser eats one trkpt per animate frame | Linear time advance across the calendar |
+| Empirical 30 fps (declared 120 in header) | 120 fps from the header |
+| Second-order damped spring on time itself with `timeD *= 0.1` | First-order exponential ease on `dispT` |
+| Photo `_alpha = timer` ramping to 100, with the CXForm `mul a=0.1` overridden by `loadMovie` | Photo opacity capped at literal CXForm value 0.10, then 0.35, then 0.55, then 0.85 |
+| Bloom formula `3.5 + 9_000_000 / (dt + 1)` | Approximations of the curve before reading the AS2 |
+| Camera spring constants `(1/40, 0.69)` and `(1/3, 0.59)` | Cleaner round numbers attempted first |
+| 90× CAMDRAWING vs 100× EXTENTS scale ratio | Single scale factor for both states |
+| `lat × -800`, `lon × 400` (a 2:1 squash, not a real projection) | Equirectangular with cosine correction at first |
+| Hairline strokes from twip-stored line widths (1 screen pixel at any zoom) | Constant pixel widths that scaled with zoom |
+| Trkpt-paced playback that elides overnight gaps for free | Linear advance that rendered overnight gaps as long static stretches |
+
+Every entry in the right column is what a competent engineer in 2026
+would write if handed the spec. None is what Even wrote in 2004.
+
+The reason is not training-data dominance alone. The obvious choice is
+also lower-risk for a system trained to defer to convention. A
+constant of 0.69 looks like a typo to a system that rounds to clean
+numbers. A parser that ignores timestamps looks like a bug to a system
+that respects data. A CXForm of `mul a=0.1` looks like a hard cap to
+a system that reads specs literally. A 120 fps header looks like the
+truth to a system that trusts metadata. The cumulative effect: AI
+risk-aversion at the small scale compounds into aesthetic cowardice at
+the large scale. Median is the safe play. Median is also, by
+definition, not interesting.
+
+The corollary for software archaeology of artist-coder work: the first
+pass will always be the version a competent contemporary engineer
+would build. That is the wrong starting point if what you want is the
+original. Each idiosyncratic choice has to be surfaced individually,
+either by reading the bytecode hours and asking *"wait, why did they
+do it this way?"*, or by someone in the loop with taste saying
+*"no, that's not it"* and naming what is missing. The whole session
+above is the record of Timo doing the second of those, twenty-four
+times.
+
+The practical consequence is that AI is not a substitute for the
+human in this kind of work. It is a force-multiplier for a particular
+kind of human: one who knows what the work felt like, can recognise
+when the recreation has flattened, and is willing to keep saying so.
+Without that person, an AI-led recovery flattens to the median
+engineer's reading of the artefact. With them, it can recover the
+artist's.
