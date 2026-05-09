@@ -442,11 +442,12 @@ function pathHour(ctx) {
 
   function drawPhotos(T, activePhotoCount) {
     const k = (camera.scale_pct / 100) * BASE_SCALE;  // camera*base scale factor
-    // Safety cap only — natural curve at SWF's 2500 SCALE_CAP shrinks rapidly
-    // (1100 px ~1 sec real, ~viewport ~5 sec). 100 here protects drawImage
-    // from the absurd first 1-2 frames where scale would be > 700M px, and is
-    // otherwise invisible.  The bloom-and-shrink dynamic plays out naturally.
-    const MAX_FINAL_SCALE = 100;
+    // Clamp via the natural value at first post-activation tick, so the cap
+    // and natural curve agree at that moment — no perceptible step-down.
+    // At median GPS gap of 14 sec and max camera (k=12.5), tick 1 finalScale
+    // ≈ 80. Keeping the cap there means tick 0's absurd value clamps to the
+    // same size tick 1 would naturally show, then shrinks smoothly from there.
+    const MAX_FINAL_SCALE = 80;
 
     // pre-load lookahead
     if (activePhotoCount > 0) preloadNear(activePhotoCount - 1);
