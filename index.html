@@ -618,9 +618,12 @@ function pathHour(ctx) {
     drawHours(activeHours);
     ctx.restore();
 
-    // overlay (screen-space)
+    // overlay (screen-space) — SWF showed the LAST PARSED trkpt's time
+    // (display._displayTime = time.toString() in addPoint), not the eased
+    // timeKeeper time. Use parserIdx for canvas overlay so display matches.
     if (allPts.length > 0) {
-      drawDisplay(nearestPoint(allPts, dispT));
+      const idx = Math.min(allPts.length - 1, Math.floor(parserIdx));
+      drawDisplay(allPts[idx]);
     }
 
     requestAnimationFrame(frame);
