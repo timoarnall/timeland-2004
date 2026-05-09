@@ -645,10 +645,16 @@ function pathHour(ctx) {
   scrub.addEventListener('input', e => {
     stopPlay();
     const f = +e.target.value / +e.target.max;
-    parserIdx = Math.floor(f * (allPts.length - 1));
+    const targetTime = t0 + f * (t1 - t0);
+    let lo = 0, hi = allPts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (allPts[mid].t < targetTime) lo = mid + 1; else hi = mid;
+    }
+    parserIdx = lo;
     targetT = allPts[parserIdx].t;
     setT(targetT, true);
-    timeD = 0;          // reset velocity when scrubbing
+    timeD = 0;
   });
 
   // Parser now advances inside the physics tick (one trkpt per SWF frame).
@@ -686,7 +692,15 @@ function pathHour(ctx) {
   const params = new URLSearchParams(location.search);
   if (params.has('seek')) {
     const f = Math.max(0, Math.min(1, +params.get('seek')));
-    const targetIdx = Math.max(0, Math.min(allPts.length - 1, Math.floor(f * (allPts.length - 1))));
+    // BUG FIX: trkpts aren't evenly spaced in time. seek fraction must map
+    // to the trkpt whose TIME is closest, not array-index closest.
+    const targetTime = t0 + f * (t1 - t0);
+    let lo = 0, hi = allPts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (allPts[mid].t < targetTime) lo = mid + 1; else hi = mid;
+    }
+    const targetIdx = lo;
 
     // Settle photo timers up to ~targetIdx-PLAY_IN (long-active photos at full
     // alpha so the trail of past-stills is correct).
