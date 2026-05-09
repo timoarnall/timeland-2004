@@ -1104,7 +1104,99 @@ The 2004 closing paragraph asked for a Steenbeck. The 2026 recreation
 has a scrub bar. The wish in the original made it into the
 restoration, twenty-two years later.
 
-## XV. The artist-coder problem
+## XV. The side-by-side harness, in nine iterations
+
+Halfway through the session the pattern of "make a guess, ask Timo, get
+correction, iterate" stopped scaling. Timo's questions were getting
+sharper than the available evidence. The fix was a side-by-side
+comparison harness: render the .mov on the left, render the recreation
+at the matching parser-time on the right, composite to MP4 and GIF,
+look at frames side-by-side. Once the harness existed, every audit
+collapsed from "judge by feel" to "look at the divergent pixels".
+
+The harness itself took nine iterations to get right. Recorded here
+because the bugs in the harness are themselves instructive, and because
+the iteration is preserved on disk as `_Documentation/comparison_*.{mp4,gif}`.
+
+| Version | Bug | Fix | File |
+|---|---|---|---|
+| `side_by_side` (v2) | Photo opacity capped at 0.35 (literal CXForm reading); seek-by-array-index gave drift | First baseline; useful only as a "this is wrong" reference | `comparison_side_by_side.{mp4,gif}` |
+| `v3_swf_exact` | Capture interrupted at f023 (server died) | Partial; only 22 frames | `comparison_v3_swf_exact.{mp4,gif}` |
+| `v5` | `parserIdx = floor(f × N)` mapping. Trkpts cluster densely at stops, so high-fraction lookups landed in dense regions and reported a much later time than the time-fraction implied. Drift up to 6 hours mid-trip. | Replaced index-based seek with `bisect_by_time` over the full GPX | `comparison_v5.{mp4,gif}` |
+| `v6` | Captured half before the bisect fix, half after | Re-render | `comparison_v6.{mp4,gif}` |
+| `v7` | Display-time was 2 hours off because `fmtFlashDate` still added the +2h CEST shift | Dropped the shift; matched the SWF's literal Z-text-as-CEST format | `comparison_v7.{mp4,gif}` |
+| `v8` | Mac was on PDT; Python's `datetime.utcfromtimestamp` interpreted naive timestamps as Pacific local, shifting all OCR'd times by 7 hours. Anchor table was off by hours. | Wrap all timestamp arithmetic in explicit UTC | `comparison_v8.{mp4,gif}` |
+| `v9` | All previous bugs fixed. Display showed eased-time instead of parser-time (subtle phase mismatch) | `drawDisplay()` now reads `allPts[parserIdx]` not `nearestPoint(allPts, dispT)` | `comparison_v9.{mp4,gif}` |
+
+v9 is the canonical synced version. The remaining differences between
+v9's two panels are real but minor: a small lead/lag in photo
+appearance (the SWF used `loadMovie` async, mine pre-caches and shows
+photos instantly on activation), and a small filmstrip-persistence
+difference (where the camera centring puts older photos in or out of
+view).
+
+### XV.1 The OCR-driven sync technique
+
+The seek-mapping bugs above all came from trying to compute the
+recreation's seek position analytically. The reliable approach
+(version 9) was to OCR the .mov's display label out of each frame and
+build the seek manifest from the literal timestamps.
+
+```bash
+ffmpeg -i mov_frames/f${N}.jpg -vf "crop=300:50:30:0,scale=...,negate" - |
+   tesseract - - --psm 6 -c tessedit_char_whitelist="0-9A-Za-z:+- "
+```
+
+OCR succeeded on 130 of 192 frames; the rest were interpolated between
+adjacent successes. With this manifest, headless Chrome captured the
+recreation at the exact same trip-time the .mov displayed. The two
+panels were synced at the millisecond level.
+
+### XV.2 The discovery of the registration-order divergence
+
+Reading the AS2 init code more carefully (DoAction_16.as) revealed
+that the SWF registers `cameraKeeper` *before* `timeKeeper` in the
+animation listener list:
+
+```
+animationManager_addListener(_root.cameraKeeper);
+animationManager_addListener(_root.timeKeeper);
+```
+
+So per tick, the SWF runs:
+parser → cameraKeeper → timeKeeper → images.
+
+Camera reads the *previous* frame's eased dispT, then TimeKeeper
+updates dispT for the *next* frame to read. One-frame phase lag
+across every frame.
+
+The JS port had the order reversed (parser → timeKeeper → cameraKeeper
+→ images) which would mean camera reads the *current* frame's eased
+dispT. The visible effect is small (~33 ms phase) but it's a system-
+level pattern divergence. Recorded here for the next archaeology;
+not yet fixed in `index.html`.
+
+### XV.3 The "ground truth first" lesson
+
+The harness above is the move that should have been made on day one.
+Every iteration of code-reading, AS2 porting, and parameter-tweaking
+between the first attempt and v9 was Claude trusting symbolic reasoning
+over visual ground truth. Each tweak felt cheaper than the harness;
+the cumulative cost of guessing was much higher than building it.
+
+Captured to memory at `feedback_ground_truth_first.md` (in the
+project's per-conversation memory directory) so the next session
+opens with this loaded:
+
+> When the user has a high-fidelity ground-truth artefact (a video,
+> a screenshot, a render), build the synced comparison harness BEFORE
+> the first iteration of porting. Treat it as the test harness, not
+> as the polish step at the end.
+
+This is the load-bearing process lesson of the whole session. Worth
+more than any single technical finding.
+
+## XVI. The artist-coder problem
 
 A pattern Timo named after publication, worth recording for any
 future archaeology. In every place where the SWF had an idiosyncratic
@@ -1154,3 +1246,61 @@ when the recreation has flattened, and is willing to keep saying so.
 Without that person, an AI-led recovery flattens to the median
 engineer's reading of the artefact. With them, it can recover the
 artist's.
+
+## XVII. Even's reactions, in three rounds
+
+Recorded verbatim because the original collaborator's voice is the
+closest thing to a passing grade this kind of work can earn.
+
+Round one — when the live recreation first ran, before the side-by-side
+harness existed:
+
+> Wow. That's pretty much 1:1.
+
+Round two — when shown a still from the early side-by-side, with the
+admission that the panels were actually quite different and that
+Claude had been asked "to go into your artistic mind and understand
+the patterns you used":
+
+> Haha. Thanks for doing the side by side. It feels like it preserves
+> the feeling though, even if not px accurate. The above video felt
+> like the work I remember producing even if there is slippage. This
+> is what talking to your grandma in the box is going to be like. For
+> all intents and purposes the same thing.
+
+Round three — when shown the writeup, with the observation about
+overnight pauses already folded into Section X.7:
+
+> Aaw, nice! Yes Claude, without that it would be v boring. Interesting
+> that Claude's first pass was just a very ordinary photo + gpx track
+> rendering and had lots of long overnight pauses. Boring indeed.
+
+Three things follow.
+
+The "1:1" reaction in round one was *before* any visual harness
+existed. Even was looking at the recreation by itself, against memory
+of the original from twenty-two years ago. His memory and the recreation
+matched closely enough that he wrote 1:1.
+
+Round two corrects him. Once we put the panels next to each other,
+the differences became visible: photo cadence, marker density, exact
+trail shape, the lead-lag of camera transients. They were never going
+to be 1:1 in pixels. But the *feeling* was preserved, in his words,
+and "the above video felt like the work I remember producing even if
+there is slippage". That distinction (preserves the feeling vs pixel
+accurate) is the bar that mattered in this work and probably matters
+in any artist-coder archaeology. Mechanism-true is the goal, not
+pixel-true.
+
+The "grandma in the box" line is the strongest framing of what AI
+archaeology actually is. The recreation is not Even, and it is not
+the SWF either. It is an interpretation of the work, by AI plus the
+collaborator-now-archivist, that is recognisable to the maker as the
+same thing. *For all intents and purposes the same thing.* The
+recreation lives in the same category Even put it: a stand-in for the
+original good enough to talk to.
+
+Worth recording because the same conversation will happen again, with
+work whose makers are no longer here to react. The standard for "is
+this the same thing?" will be set by what makers said when they could
+still say it.
