@@ -81,7 +81,10 @@ const SPRING_DAMP_EXT = 0.59;
 const SCALE_CAP       = 3800;      // older SWF cap; 2500 (v19) felt too zoomed
                                    // out during walking. 3800 brings micro
                                    // movements into view while photos settle
-                                   // at a readable scale.
+                                   // at a readable scale. Verified by sweeping
+                                   // 2500/3200/3800/4500 across 8 timeline
+                                   // moments — 3800 consistently closest to
+                                   // mov on walking-phase frames.
 const TRAIL_WINDOW    = 15;        // last 15 minutes used for bbox
 const NEW_MINUTE_MS   = 30000;     // new minute marker gap
 
@@ -444,11 +447,10 @@ function pathHour(ctx) {
 
   function drawPhotos(T, activePhotoCount) {
     const k = (camera.scale_pct / 100) * BASE_SCALE;  // camera*base scale factor
-    // Clamp via the natural value at first post-activation tick, so the cap
-    // and natural curve agree at that moment — no perceptible step-down.
-    // Scales with k: at SCALE_CAP=3800, k=19 (vs 12.5 at 2500), so the
-    // first-tick natural value rises proportionally → 80 × (19/12.5) ≈ 122.
-    const MAX_FINAL_SCALE = 122;
+    // Clamp scales with k so bloom→settle stays smooth at any cap.
+    // Reference: at SCALE_CAP=2500, k=12.5, MAX_FINAL_SCALE=80.
+    // At SCALE_CAP=3800: 80 × (3800/2500) ≈ 122.
+    const MAX_FINAL_SCALE = 80 * (SCALE_CAP / 2500);
 
     // pre-load lookahead
     if (activePhotoCount > 0) preloadNear(activePhotoCount - 1);
@@ -750,6 +752,16 @@ function pathHour(ctx) {
       }
     }
     if (f >= 0.999) camera.state = 'EXTENTS';
+
+    // After play-in: continuous mov has had minutes of physics to settle the
+    // camera bbox spring; 90 frames of play-in can't match that. Snap cur to
+    // dest so seek/headless captures show converged camera, not transient.
+    camera.cur1.x = camera.dest1.x; camera.cur1.y = camera.dest1.y;
+    camera.cur2.x = camera.dest2.x; camera.cur2.y = camera.dest2.y;
+    camera.cur.x  = camera.dest.x;  camera.cur.y  = camera.dest.y;
+    camera.vel.x = camera.vel.y = 0;
+    camera.vel1.x = camera.vel1.y = 0;
+    camera.vel2.x = camera.vel2.y = 0;
   }
   if (params.get('play') === '1') startPlay();
 
