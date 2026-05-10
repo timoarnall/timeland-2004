@@ -516,7 +516,7 @@ Every numeric constant in the file:
 | Trail window slice | (-15, -1) | DoAction_4:38 | Last 14 of 15 minutes |
 | CAMDRAWING scale ratio | 90 | DoAction_4:91 | × mapW / bbox |
 | EXTENTS scale ratio | 100 | DoAction_4:94 | × mapW / bbox |
-| Scale cap | 2500 | DoAction_4:96 | Maximum zoom |
+| Scale cap | 2500 (v19); port runs 3800 | DoAction_4:96 | Maximum zoom (see §X.11 for the calibration that bumped this) |
 | TimeKeeper stiffness | 4 | DoAction_2:28 | Damped spring constant |
 | TimeKeeper damping | 0.1 | DoAction_2:29 | Velocity reduction |
 | New minute threshold | 30000 ms | DoAction_5:39 | Gap between minute markers |
@@ -544,11 +544,13 @@ dependencies. What it preserves:
 
 ### VI.1 Constants
 
-Every numeric in the SWF traced in. The port adds three constants
-the SWF didn't have: `MAX_FINAL_SCALE = 100` (a safety cap on the
-bloom that fires only on the absurd first frame), `PLAY_IN = 90`
-(frames of pre-rolled physics for the `?seek=` URL parameter), and
-`SWF_FPS = 30` (empirical; the SWF header lies).
+Every numeric in the SWF traced in. The port adds four constants
+the SWF didn't have: `MAX_FINAL_SCALE = 80 × (SCALE_CAP/2500)` (a
+safety cap on the bloom that auto-tracks `SCALE_CAP`; see §VI.6 and
+§X.11), `PLAY_IN = 90` (frames of pre-rolled physics for the
+`?seek=` URL parameter), `SWF_FPS = 30` (empirical; the SWF header
+lies), and a `SCALE_CAP` override of 3800 vs the v19 literal 2500
+(calibrated against the .mov; see §X.11).
 
 ### VI.2 Spring math, ported verbatim
 
@@ -639,6 +641,24 @@ otherwise.
   crisp on retina displays.
 - **`SWF_FPS = 30` empirical override.** The header declares 120; the
   measured rate from the .mov is ~30.6.
+- **Responsive container fill.** The 500 × 500 SWF design size is
+  preserved as the internal coordinate system, but the rendered
+  canvas now fills its CSS container at any width. A `ResizeObserver`
+  syncs the drawing buffer to `clientWidth × devicePixelRatio` on
+  every resize so the artefact stays sharp on hosts wider than 500
+  px. SWF design units map to drawing-buffer pixels via a single
+  `canvasScale = buf / SWF_W` factor that replaces the old hard-coded
+  DPR multiply.
+- **Iframe-host-aware styling.** The body background is transparent
+  so whichever host page (light or dark) shows through; the artefact
+  canvas keeps its `#f9f8f6` warm-grey; play button and scrub bar use
+  translucent greys (`rgba(128,128,128,0.20)` to `0.32`) that read
+  on either a light or a dark host. A `?bg=white` URL parameter
+  forces a white canvas background for headless screen-recording
+  fairness (see §XV).
+- **3 px stage corner rounding.** A small `border-radius: 3px` on
+  the stage and canvas softens the squareness without making the
+  artefact read as a rounded UI element.
 
 ### VI.8 What the SWF had that the port doesn't
 
@@ -660,11 +680,14 @@ fidelity. Each is documented in the `index.html` comments so the next
 reader doesn't fix them.
 
 On 2026-05-09 (after the writeup first posted), two of the six were
-reverted: VII.1 (the lat/lon scale swap) and VII.2 (the GMT+0200
-timezone label). Reasons and principle in §VII.7. The reversion was
-made by Timo in another terminal session; this document records the
-decision, not the diff. Sections VII.1 and VII.2 below preserve the
-original analysis and add the post-revert state at the end of each.
+decided to be reverted: VII.1 (the lat/lon scale swap) and VII.2
+(the GMT+0200 timezone label). Reasons and principle in §VII.7. As
+of this writing the lat/lon revert has shipped in code; the GMT
+label revert is decided and described in the lay essay but the
+single-line edit to `fmtFlashDate` is still queued (see
+`_Documentation/todo_unfix_bugs.md`). Sections VII.1 and VII.2 below
+preserve the original analysis and add the post-decision state at
+the end of each.
 
 ### VII.1 The lat/lon scale swap in display
 
@@ -719,14 +742,19 @@ function fmtFlashDate(t) {
 }
 ```
 
-**Reverted 2026-05-09.** The label now reads the actual UTC time in
-Iceland (which is on UTC year-round, no DST). The previous label
-asserted CEST, two hours ahead of the trip's real local time; for
-anyone reading the clock to follow the trip — when did we leave
-Höfn, when did we reach Reykjavík — the label was actively
-misleading. The underlying time variable was always true UTC, so
-the change is a label-format change only, not a recomputation.
-See §VII.7.
+**Decided 2026-05-09; revert pending in code.** The reversion
+intent: display the actual UTC time in Iceland (which is on UTC
+year-round, no DST), so anyone reading the clock to follow the trip
+sees the real local time. The previous label asserted CEST, two
+hours ahead of the trip's real local time; for the question *"when
+did we leave Höfn, when did we reach Reykjavík"* the label was
+actively misleading. The underlying time variable was always true
+UTC, so the change is a label-format change only, not a
+recomputation. The lay essay and the JSON CMS already describe the
+revert as done; `fmtFlashDate` in `index.html` still emits the
+literal `GMT+0200` suffix as of commit `6f4b647`. The single-line
+edit is queued in `_Documentation/todo_unfix_bugs.md`.
+See §VII.7 for the principle.
 
 ### VII.3 The squashed projection
 
@@ -1058,7 +1086,7 @@ No mythical fuller GPX. Same Iceland data, displayed wrong.
 - First port drew photos last (on top). Fix: draw photos first,
   markers second.
 
-### X.9 The seek-converge regression
+### X.9 The seek-converge regression (and the bbox-snap fix that came after)
 
 - Symptom: screenshot comparison videos showed the recreation
   artificially still at every captured frame, while the .mov captured
@@ -1070,6 +1098,19 @@ No mythical fuller GPX. Same Iceland data, displayed wrong.
   90 frames of real playback through the target. Camera spring
   mid-transient at the rendered moment. Commit `d008383`.
 
+A second symptom emerged later, while sweeping `SCALE_CAP` across
+the timeline (see §X.11): the seek-mode screenshots reported the
+camera bbox as ~2.5× wider than its destination value at the
+rendered moment. The .mov, in continuous playback, had had minutes
+of physics to settle the bbox spring; my 90-frame play-in could not
+match that from a cold seek-jump start. So every screenshot
+comparison until then had been measuring transient spring state, not
+converged state, and any conclusion drawn about visual scale was
+suspect. Fix: snap `cur` to `dest` at the end of the seek's
+play-in (bbox + main camera + zero velocities). Live playback is
+unaffected; only the headless screenshot path lands in a converged
+state matching the .mov. Commit `cb90d7d`.
+
 ### X.10 Words that did unjustified work
 
 - *"matches closely"*, *"broadly similar"*, *"roughly"* in Claude
@@ -1077,6 +1118,37 @@ No mythical fuller GPX. Same Iceland data, displayed wrong.
 - Timo's correction: *"these words are doing a lot of work."*
 - Lesson for archaeology: only verifiable matches count. Either two
   frames are the same or they are not. Closely is doing work.
+
+### X.11 SCALE_CAP recalibration (2500 → 3800)
+
+- Symptom: the recreation felt more zoomed-out than the .mov during
+  walking-speed phases. Markers and photographs read smaller than in
+  the .mov panel of the side-by-side, especially in dense
+  Reykjavík/Geysir clusters.
+- Diagnosis required X.9's bbox-snap fix first, otherwise every
+  screenshot comparison was reading transient spring state and the
+  symptom got mis-attributed.
+- Method: parameter sweep across 8 timeline moments × 4 caps
+  (2500/3200/3800/4500), captured headlessly with the bbox-snap
+  applied. Walking-phase moments (m150 pegs, m185 tile, etc.) were
+  the fair-comparison set; moments where the .mov was mid-TimeKeeper
+  fast-forward were excluded because the panels disagreed on which
+  moment they were rendering, not on scale.
+- Result: cap = 3800 sat consistently closest to the .mov on the
+  walking-phase set. cap = 2500 (v19's value) felt zoomed-out.
+  cap = 4500 felt zoomed-in.
+- Hypothesis: v19 lowered the cap from an earlier SWF iteration.
+  The .mov was screen-recorded against an earlier SWF whose cap was
+  closer to 3800. The disassembly we have is v19, which is why the
+  literal value in §V.10 is 2500 and the port runs 3800.
+- Bloom-cap follow-on: `MAX_FINAL_SCALE` is set as
+  `80 × (SCALE_CAP / 2500)` so the bloom→settle dynamic stays
+  smooth at any cap (see §VI.6). At 3800 this resolves to ~122.
+- Commit `cace6db`.
+
+The SCALE_CAP=3800 is the second non-SWF-faithful constant in the
+port, after the +15 % marker bump in §XV.5. Both are flagged in the
+code as side-by-side rig calibrations rather than fidelity claims.
 
 ## XI. What Claude got wrong on first pass
 

@@ -1,39 +1,48 @@
-# Todo: undo the preserved SWF bugs
+# Todo: undo the preserved SWF display bugs
 
-The 2026 recreation currently preserves two SWF v19 display bugs verbatim.
-Timo wants these corrected so he can read the data faithfully.
+The 2026 recreation originally preserved two SWF v19 display bugs
+verbatim. Timo decided 2026-05-09 to correct both so he could read
+the data faithfully (see `2026-archaeology.md` §VII.7 for the
+charm-vs-experience-cost criterion). Status of each below.
 
-## 1. Clock reads +2h ahead
+## 1. Longitude shows mid-Atlantic value — DONE
 
-The .mov shows `13:43:52 GMT+0200` for a trkpt whose true UTC value is
-`13:43:52Z`. This is a Flash 6 `setHours` quirk — the SWF reinterpreted
-the GPX `Z` value as local CEST and then displayed it suffixed with
-`GMT+0200`. The recreation reproduces that label literally
-(`fmtFlashDate` outputs raw `Z` text labelled `GMT+0200`).
-
-**Fix:** display true Iceland local time. Iceland was on GMT year-round in
-2004, so the trkpt at `13:43:52Z` should display `13:43:52 GMT` (or
-`Sat Jul 03 13:43:52 GMT 2004`). The label suffix should also change
-from `GMT+0200` to `GMT`.
-
-Edit: `fmtFlashDate` in `index.html`. No GPX/EXIF data shifts — both are
-already true UTC.
-
-## 2. Longitude shows mid-Atlantic value
-
-The .mov shows `10.963852W` for a trkpt at true `−21.927704W` in
-Reykjavik. SWF v19 has a typo in its display formula —
+Was: the .mov shows `10.963852W` for a trkpt at true `−21.927704W`
+in Reykjavik. SWF v19 has a typo in its display formula —
 `display._lat = lon / gLatScale` divides longitude by `gLatScale (-800)`
 instead of `gLonScale (400)`. So `−21.93 × 400 / −800 = 10.96`.
 
-**Fix:** display true longitude. `(-trkpt.raw_lon).toFixed(6) + 'W'` is
-correct for negative longitudes. Drop the `/-800` rendering path.
+**Reverted in code.** `drawDisplay` in `index.html` now writes
+`(-trkpt.raw_lon).toFixed(6) + 'W'` for the lon column, which gives
+the true value. Section VII.1 of the archaeology covers the bug and
+the revert.
 
-Edit: `drawDisplay` in `index.html`, the line writing the lon column.
+## 2. Clock reads +2h ahead — PENDING
+
+Status: the .mov shows `13:43:52 GMT+0200` for a trkpt whose true
+UTC value is `13:43:52Z`. This is a Flash 6 `setHours` quirk — the
+SWF reinterpreted the GPX `Z` value as local CEST and then displayed
+it suffixed with `GMT+0200`. The recreation still reproduces that
+label literally: `fmtFlashDate` in `index.html` (around line 192)
+hard-codes `GMT+0200` in the output.
+
+The lay essay's closing paragraph and the JSON CMS already describe
+the revert as done. The code edit has not landed yet as of commit
+`6f4b647`.
+
+**Fix:** display true Iceland local time. Iceland was on GMT
+year-round in 2004, so the trkpt at `13:43:52Z` should display
+`13:43:52 GMT` (or `Sat Jul 03 13:43:52 GMT 2004`). The label
+suffix should change from `GMT+0200` to `GMT`. The rest of
+`fmtFlashDate` already reads true UTC, so this is a one-line label
+swap, not a recomputation.
+
+Edit: `fmtFlashDate` in `index.html`. No GPX/EXIF data shifts —
+both are already true UTC.
 
 ## Why these were preserved until now
 
 Strict archival fidelity to the .mov ground truth — to make the
-side-by-side comparison videos line up label-for-label. Now that the
-mechanics are settled, the labels can be corrected so the artefact
-reads as truth, not as the SWF's bug-frozen text.
+side-by-side comparison videos line up label-for-label. Now that
+the mechanics are settled, the labels can be corrected so the
+artefact reads as truth, not as the SWF's bug-frozen text.
