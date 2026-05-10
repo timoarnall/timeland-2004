@@ -989,6 +989,11 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     document.getElementById('stage').style.background = bgOverride;
     document.getElementById('c').style.background = bgOverride;
   }
+  // ?nocontrols=1 hides the play bar for headless side-by-side captures
+  // so the canvas occupies the full viewport without flex-centring slack.
+  if (params.get('nocontrols') === '1') {
+    document.getElementById('controls').style.display = 'none';
+  }
   if (params.has('seek')) {
     const f = Math.max(0, Math.min(1, +params.get('seek')));
 
