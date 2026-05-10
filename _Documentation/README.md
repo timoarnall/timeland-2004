@@ -10,6 +10,10 @@ are in `../_archive_2004/`.
   mechanics, every constant and decision, the bug-vs-truth call,
   decompilation references. Read this if you want to understand how
   the recreation came together.
+- **`2026-05-10-session-handover.md`** — end-of-session handover from
+  the final rebuild day. Where the project stands, what shipped, what
+  is still open, how the staging deploy works. Read this *first* if
+  you're picking the project up cold.
 - **`2026-05-08-morning.md`** — first-day notes from the rebuild,
   with the open questions of the moment.
 - **`todo_unfix_bugs.md`** — record of the two preserved SWF display
