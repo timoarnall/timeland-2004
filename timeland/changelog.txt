@@ -1,7 +1,0 @@
-
-Changelog
-----
-
-31.07.04
-- fixed string to date function in util that kept it from running on the PC. cuase: error in flash in date object, month must be set last
-- saved file as MX project, instead of MX 2004. 
