@@ -234,9 +234,11 @@ function makeCamera(mapW, mapH) {
   };
 }
 
-function refocus(cam, points) {
+// Iterate points[startIdx, endIdx) and set cam.dest1/dest2 to the bbox.
+function refocus(cam, points, startIdx, endIdx) {
   let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
-  for (const p of points) {
+  for (let i = startIdx; i < endIdx; i++) {
+    const p = points[i];
     if (p.x < x1 || x1 === 0) x1 = p.x;
     if (p.y < y1 || y1 === 0) y1 = p.y;
     if (p.x > x2 || x2 === 0) x2 = p.x;
@@ -246,12 +248,15 @@ function refocus(cam, points) {
   cam.dest2.x = x2; cam.dest2.y = y2;
 }
 
-function cameraAnimate(cam, minutes, bounds, mapW) {
-  if (cam.state === 'CAMDRAWING' && minutes.length > 0) {
-    if (minutes.length > TRAIL_WINDOW) {
-      refocus(cam, minutes.slice(-TRAIL_WINDOW, -1));   // last 14 of 15
+// `minutes` is the full markers array; only the first `minutesLen` entries are
+// active. Avoids slicing the array every physics tick (up to 8/render frame).
+function cameraAnimate(cam, minutes, minutesLen, bounds, mapW) {
+  if (cam.state === 'CAMDRAWING' && minutesLen > 0) {
+    if (minutesLen > TRAIL_WINDOW) {
+      // last 14 of 15 — equivalent to slice(-15, -1) on the active prefix
+      refocus(cam, minutes, minutesLen - TRAIL_WINDOW, minutesLen - 1);
     }
-    const last = minutes[minutes.length - 1];
+    const last = minutes[minutesLen - 1];
     cam.dest.x = last.x; cam.dest.y = last.y;
 
     // First-frame snap so we don't have a violent intro
@@ -306,35 +311,31 @@ function cameraAnimate(cam, minutes, bounds, mapW) {
 }
 
 // ============================================================================
-// Shape primitives — match SWF DEFINESHAPE bodies
+// Shape primitives — match SWF DEFINESHAPE bodies. Built once, reused per draw.
 // ============================================================================
-function pathOctagonMinute(ctx) {
-  // shape id 0006: octagon vertices. Original SWF span is 0.40 design units;
-  // scaled up 15% here (×1.15) so markers read at the size the SWF appears
-  // at when the .mov is upsampled from native 478 to 500 in side-by-side.
-  ctx.beginPath();
-  ctx.moveTo(-0.173, -0.173);
-  ctx.lineTo(-0.230,  0.000);
-  ctx.lineTo(-0.173,  0.173);
-  ctx.lineTo( 0.000,  0.230);
-  ctx.lineTo( 0.173,  0.173);
-  ctx.lineTo( 0.230,  0.000);
-  ctx.lineTo( 0.173, -0.173);
-  ctx.lineTo( 0.000, -0.230);
-  ctx.lineTo(-0.173, -0.173);
-}
-function pathMinuteFront(ctx) {
-  // shape id 0003: 3-arm cross around (0.80, 0.75) — placement applies (-0.80, -0.75) so origin is at point
-  ctx.beginPath();
-  ctx.moveTo(0.80, 0.10); ctx.lineTo(0.80, 0.75); ctx.lineTo(1.60, 0.75);
-  ctx.moveTo(0.80, 1.65); ctx.lineTo(0.80, 0.75); ctx.lineTo(0.15, 0.75);
-}
-function pathHour(ctx) {
-  // shape id 0009: cross
-  ctx.beginPath();
-  ctx.moveTo( 0.05, -1.10); ctx.lineTo(0.05,  0.05); ctx.lineTo( 1.50, 0.05);
-  ctx.moveTo( 0.05,  1.40); ctx.lineTo(0.05,  0.05); ctx.lineTo(-1.40, 0.05);
-}
+// shape id 0006: octagon vertices. Original SWF span is 0.40 design units;
+// scaled up 15% here (×1.15) so markers read at the size the SWF appears at
+// when the .mov is upsampled from native 478 to 500 in side-by-side.
+const PATH_OCTAGON = new Path2D();
+PATH_OCTAGON.moveTo(-0.173, -0.173);
+PATH_OCTAGON.lineTo(-0.230,  0.000);
+PATH_OCTAGON.lineTo(-0.173,  0.173);
+PATH_OCTAGON.lineTo( 0.000,  0.230);
+PATH_OCTAGON.lineTo( 0.173,  0.173);
+PATH_OCTAGON.lineTo( 0.230,  0.000);
+PATH_OCTAGON.lineTo( 0.173, -0.173);
+PATH_OCTAGON.lineTo( 0.000, -0.230);
+PATH_OCTAGON.lineTo(-0.173, -0.173);
+
+// shape id 0003: 3-arm cross around (0.80, 0.75) — placement applies (-0.80, -0.75) so origin is at point
+const PATH_MINUTEFRONT = new Path2D();
+PATH_MINUTEFRONT.moveTo(0.80, 0.10); PATH_MINUTEFRONT.lineTo(0.80, 0.75); PATH_MINUTEFRONT.lineTo(1.60, 0.75);
+PATH_MINUTEFRONT.moveTo(0.80, 1.65); PATH_MINUTEFRONT.lineTo(0.80, 0.75); PATH_MINUTEFRONT.lineTo(0.15, 0.75);
+
+// shape id 0009: hour cross
+const PATH_HOUR = new Path2D();
+PATH_HOUR.moveTo( 0.05, -1.10); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo( 1.50, 0.05);
+PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(-1.40, 0.05);
 
 // ============================================================================
 // Main
@@ -426,48 +427,54 @@ function pathHour(ctx) {
   // Flash MX stores stroke widths in twips. 0.05 px = 1 twip = hairline,
   // which renders as a constant 1-screen-pixel stroke regardless of zoom.
   // We replicate by setting lineWidth = 1 / current_transform_scale.
-  function drawMinutes(activeMinutes) {
+  //
+  // Draw functions take the markers array + active count (not a slice) to
+  // avoid hot-path allocations. Per-marker save/restore replaced with
+  // translate-back to skip saving the full ctx state stack each marker.
+  function drawMinutes(minutes, activeLen) {
+    if (activeLen <= 0) return;
     const baseK = (camera.scale_pct / 100) * BASE_SCALE;
 
-    // minutefront (depth 1 in sprite): grey 3-arm cross, alpha 0.2
+    // Pass 1: minutefront (depth 1) — grey 3-arm cross, alpha 0.2
     ctx.strokeStyle = '#333333';
     ctx.globalAlpha = 0.20;
     ctx.lineWidth   = 1 / baseK;
-    for (const m of activeMinutes) {
-      ctx.save();
-      ctx.translate(m.x - 0.80, m.y - 0.75);
-      pathMinuteFront(ctx);
-      ctx.stroke();
-      ctx.restore();
+    for (let i = 0; i < activeLen; i++) {
+      const m = minutes[i];
+      const dx = m.x - 0.80, dy = m.y - 0.75;
+      ctx.translate(dx, dy);
+      ctx.stroke(PATH_MINUTEFRONT);
+      ctx.translate(-dx, -dy);
     }
 
-    // minute octagon (depth 2 in sprite): #c40000, alpha 0.5
+    // Pass 2: minute octagon (depth 2) — #c40000, alpha 0.5, per-marker scale
     ctx.strokeStyle = '#c40000';
     ctx.globalAlpha = 0.50;
-    for (const m of activeMinutes) {
+    for (let i = 0; i < activeLen; i++) {
+      const m = minutes[i];
       const ms = (Math.max(0, m.ele) * 0.8 + 80) / 100;   // Minute.scale formula
-      ctx.save();
       ctx.translate(m.x, m.y);
       ctx.scale(ms, ms);
       ctx.lineWidth = 1 / (baseK * ms);                   // 1 px hairline
-      pathOctagonMinute(ctx);
-      ctx.stroke();
-      ctx.restore();
+      ctx.stroke(PATH_OCTAGON);
+      const inv = 1 / ms;
+      ctx.scale(inv, inv);
+      ctx.translate(-m.x, -m.y);
     }
     ctx.globalAlpha = 1;
   }
 
-  function drawHours(activeHours) {
+  function drawHours(hours, activeLen) {
+    if (activeLen <= 0) return;
     const baseK = (camera.scale_pct / 100) * BASE_SCALE;
     ctx.strokeStyle = '#743636';
     ctx.globalAlpha = 1.0;
     ctx.lineWidth   = 1 / baseK;                          // hairline
-    for (const h of activeHours) {
-      ctx.save();
+    for (let i = 0; i < activeLen; i++) {
+      const h = hours[i];
       ctx.translate(h.x, h.y);
-      pathHour(ctx);
-      ctx.stroke();
-      ctx.restore();
+      ctx.stroke(PATH_HOUR);
+      ctx.translate(-h.x, -h.y);
     }
   }
 
@@ -490,46 +497,47 @@ function pathHour(ctx) {
     // pre-load lookahead
     if (activePhotoCount > 0) preloadNear(activePhotoCount - 1);
 
+    // Sprite id 0014 ("image") layer order:
+    //   depth 1: outline shape id 0011 placed at scale (1.0, 0.887) — full alpha
+    //   depth 2: placeholder sprite id 0013 with CXForm mul a=0.1 — photo content
+    // Outline draws first underneath, then the photo on top.
+    //
+    // AS2 sets clip.placeholder._alpha = timer (0→100 over 83 frames = 2.77s @
+    // 30 fps). The CXForm a=0.1 sat on the EMPTY placeholder; loadMovie
+    // replaces the clip's contents and Flash 6 didn't preserve the placement
+    // transform on the loaded image — so at timer=100 the photo is fully
+    // opaque. The layered see-through look in the .mov comes from size
+    // variation across photos (older = smaller per the scale formula), not
+    // per-photo translucency.
+    const PHOTO_ALPHA_CAP = 1.0;
     for (let i = 0; i < activePhotoCount; i++) {
       const p = photos[i];
+      const fadeAlpha = p.timer / 100;
+      if (fadeAlpha <= 0) continue;
+
       const dt = Math.abs(T - p.t);
       // SWF scale: 3.5 + 9_000_000 / (dt + 1) — input is ms
       let photoScale = (3.5 + 9_000_000 / (dt + 1)) / 100;
-      const finalScale = photoScale * k;
-      if (finalScale > MAX_FINAL_SCALE) photoScale = MAX_FINAL_SCALE / k;
+      if (photoScale * k > MAX_FINAL_SCALE) photoScale = MAX_FINAL_SCALE / k;
 
-      const fadeAlpha = p.timer / 100;     // 0..1; final cap by * 0.1 below
-      if (fadeAlpha <= 0) continue;
       const img = getImg(p.file);
-      ctx.save();
       ctx.translate(p.x, p.y);
       ctx.scale(photoScale, photoScale);
 
-      // Sprite id 0014 ("image") layer order:
-      //   depth 1: outline shape id 0011 placed at scale (1.0, 0.887) — full alpha
-      //   depth 2: placeholder sprite id 0013 placed with CXForm mul a=0.1 — photo content
-      // So the outline draws first underneath, then the photo on top at MAX 10% alpha.
-
-      // Outline: 320 × 212.8 (= 240 × 0.887), #dddddd hairline, full alpha
+      // Outline: 320 × 212.8 (= 240 × 0.887), #dddddd hairline
       ctx.globalAlpha = 1.0;
       ctx.strokeStyle = '#dddddd';
-      ctx.lineWidth   = 1 / (k * photoScale);   // hairline
+      ctx.lineWidth   = 1 / (k * photoScale);
       ctx.strokeRect(-160, -106.4, 320, 212.8);
 
-      // AS2 sets clip.placeholder._alpha = timer, ramps 0→100 over 83 frames
-      // (= 2.77s real at 30fps). The placement CXForm `mul a=0.1` was on the
-      // EMPTY placeholder; loadMovie replaces the clip's contents and (per
-      // Flash 6 behaviour) doesn't preserve the placement transform on the
-      // loaded image. So at timer=100 the photo is fully opaque. Layered
-      // see-through in the .mov comes from size variation across photos
-      // (older photos shrunk smaller than newer per the scale formula),
-      // not per-photo translucency.
-      const PHOTO_ALPHA_CAP = 1.0;
       ctx.globalAlpha = fadeAlpha * PHOTO_ALPHA_CAP;
       if (img.complete && img.naturalWidth > 0) {
         ctx.drawImage(img, -160, -106.5, 320, 213);
       }
-      ctx.restore();
+
+      const inv = 1 / photoScale;
+      ctx.scale(inv, inv);
+      ctx.translate(-p.x, -p.y);
     }
     ctx.globalAlpha = 1;
   }
@@ -567,6 +575,7 @@ function pathHour(ctx) {
   let targetT = t0;
   let lastFrameTime = 0;          // for real-time tick accumulator
   let physicsAccum = 0;           // fixed-timestep accumulator
+  let lastRenderTime = 0;         // 30-fps render-rate cap
   let timeD = 0;                  // SWF TimeKeeper.timeD — second-order velocity
 
   // After EXTENTS is requested, run camera in EXTENTS state
@@ -609,30 +618,43 @@ function pathHour(ctx) {
       // end of trip. Mirror by checking parser at the last trkpt.
       camera.state = (parserIdx >= allPts.length - 1) ? 'EXTENTS' : 'CAMDRAWING';
       const idxMinNow = lastIndexBefore(minutes, dispT);
-      const activeNow = idxMinNow >= 0 ? minutes.slice(0, idxMinNow + 1) : [];
-      cameraAnimate(camera, activeNow, bounds, SWF_W);
+      cameraAnimate(camera, minutes, idxMinNow + 1, bounds, SWF_W);
 
       // (4) Photo timers — activate when parser passes photoTime (matches AS2
       // imageKeeper.associateCurrentImage inside addPoint, not when dispT
-      // crosses; SWF triggers on parser-time, not eased dispT).
+      // crosses; SWF triggers on parser-time, not eased dispT). Photos are
+      // sorted by time; once we hit one whose t > targetT and timer is
+      // already 0 the rest are also future-zero, so we can stop.
       for (let i = 0; i < photos.length; i++) {
         const p = photos[i];
         if (targetT >= p.t) {
           if (p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
-        } else {
+        } else if (p.timer !== 0) {
           p.timer = 0;
+        } else {
+          break;
         }
       }
     }
+
+    // Render-rate cap: SWF's animate rate was ~30 fps on 2004 hardware and
+    // every spring/fade constant was tuned for that. Modern rAF runs at the
+    // display refresh (60–120 Hz). Render only when 30-fps boundary crossed
+    // — physics still runs above in fixed-timestep, so motion is unaffected
+    // and we save a 2× to 4× draw cost.
+    if (now - lastRenderTime + 1 < SWF_FRAME_MS) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    lastRenderTime = now;
 
     // Render uses dispT for active sets (after physics ticks)
     const idxMin = lastIndexBefore(minutes, dispT);
     const idxHr  = lastIndexBefore(hours, dispT);
     const idxPhoto = lastIndexBefore(photos, dispT);
-
-    const activeMinutes = idxMin >= 0 ? minutes.slice(0, idxMin + 1) : [];
-    const activeHours   = idxHr  >= 0 ? hours.slice(0, idxHr + 1)   : [];
-    const activePhotoCount = idxPhoto >= 0 ? idxPhoto + 1 : 0;
+    const activeMinutesLen = idxMin   + 1;     // 0 if idxMin = -1
+    const activeHoursLen   = idxHr    + 1;
+    const activePhotoCount = idxPhoto + 1;
 
     // clear
     ctx.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
@@ -649,8 +671,8 @@ function pathHour(ctx) {
     // then Hour — so clipIterator gives markers HIGHER depth than photos.
     // Markers render ON TOP of photos.
     drawPhotos(dispT, activePhotoCount);
-    drawMinutes(activeMinutes);
-    drawHours(activeHours);
+    drawMinutes(minutes, activeMinutesLen);
+    drawHours(hours,    activeHoursLen);
     ctx.restore();
 
     // overlay (screen-space) — SWF showed the LAST PARSED trkpt's time
@@ -778,7 +800,7 @@ function pathHour(ctx) {
       dispT -= timeD;
       // Camera animate
       const idx = lastIndexBefore(minutes, dispT);
-      cameraAnimate(camera, idx >= 0 ? minutes.slice(0, idx + 1) : [], bounds, SWF_W);
+      cameraAnimate(camera, minutes, idx + 1, bounds, SWF_W);
       // Photo timer
       for (const p of photos) {
         if (targetT >= p.t) {
