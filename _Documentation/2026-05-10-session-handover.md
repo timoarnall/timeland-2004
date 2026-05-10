@@ -21,11 +21,40 @@ sit, so a future session (or future archaeologist) can pick up cleanly.
     technical writeup. Every constant, every decision, every
     audit-chain finding, with `§N.N` references.
   - The published article — *Time that land forgot, an archaeology* —
-    in `2026 - Elasticspace update/01-content/drafts/draft-timeland-archaeology-2026.html`,
-    target URL `/2026/05/timeland-archaeology`.
+    canonical CMS source at
+    `2026 - Elasticspace update/07-site/content/timeland-archaeology.json`,
+    target URL `/2026/05/timeland-archaeology`. Edited live in
+    another terminal in a block-based editor. There is also a
+    legacy HTML draft in
+    `2026 - Elasticspace update/01-content/drafts/draft-timeland-archaeology-2026.html`
+    that is now stale; do not edit.
   - `_archive_2004/swfdump_full.txt` — the SWF disassembly.
   - `_archive_2004/time_land_forgot.mov` — the only continuous record
     of the original in motion. In Git LFS.
+  - `_Documentation/2004-omnioutliner-source.md` and
+    `2004-gpsexperience-source.md` — extractions of two 2004 `.oo3`
+    files from
+    `/Volumes/Groke/Projects/2001-2017 - Writing and Publications/`.
+    The first holds the pre-workshop design brief, the workshop talk
+    script, and the line *"How will grandchildren access it in the
+    way that I view my family albums?"* — twenty-two years before
+    Even said *talking to your grandma in the box*. The second holds
+    Timo's GPS field notes from the trip.
+- **Cross-conversation memory:** durable preferences saved at
+  `/Users/timoarnall/.claude/projects/-Volumes-Groke-Projects-2004---Timeland/memory/`,
+  indexed in `MEMORY.md` there. Three worth knowing about before
+  picking up the project:
+  - *Build ground-truth comparison harness on day one* — symbolic
+    reasoning fails silently; build the synced diff before iterating.
+    (The thing this session learned the hard way over nine
+    side-by-side iterations.)
+  - *Don't minimise small visual / behavioural differences* —
+    pixel-diff "small" is experiential "load-bearing"; describe what
+    each diff does to the felt work, not how small it is in pixels.
+  - *Bug-preservation criterion: charm yes, experience-cost no* — the
+    criterion in §VII.7. Preserve original bugs that add character;
+    revert ones that obstruct reading the data the work is a record
+    of.
 - **Code annotations:** every constant and every decision in
   `index.html` is now anchored to its archaeology section and, where
   relevant, quotes a phrase from the article. A future reader holding
@@ -121,6 +150,53 @@ tested against it.
   hand-edit user made on `94c5b2e` was specifically for Safari) but a
   manual check on the deployed elasticspace.pages.dev preview is
   worth doing once the site lands there.
+
+## The lay essay JSON (the other surface)
+
+If the next session needs to edit the published article rather than
+the artefact, the canonical file is:
+
+```
+/Volumes/Groke/Projects/2026 - Elasticspace update/07-site/content/timeland-archaeology.json
+```
+
+Title: *Time that land forgot, again*. ~86 blocks. Edited live in
+the elasticspace editor in another terminal, parallel to anything
+an agent does. Worth knowing:
+
+- **Always re-read before editing.** `_savedAt` shifts often as the
+  user edits; blocks get added or trimmed by the editor's own
+  activity. Conflicts are silent.
+- **Edit the structure with Python**, not the `Edit` tool. The
+  stale-state detection on `Edit` fights with the editor's parallel
+  saves. Validate after every write
+  (`python3 -c "import json; json.load(open(p))"`).
+- **The editor's HTML sanitiser strips `<ins data-edit="ai">` and
+  `<del data-edit="ai">` tags on save.** Surrounding content
+  survives but the markers don't. So if you wrap proposed edits
+  in those tags expecting a review UI, the user will see the
+  content as accepted, not as a diff to approve. The split between
+  `t64` (with `<del>`) and `b605vb2` (with `<ins>`) in the
+  postscript is a one-off that escaped the sanitiser by being two
+  separate blocks; not a generic mechanism.
+- **Block IDs.** Existing IDs use a short alphanumeric pattern
+  (`bj8vgp7`, `bycu0lx`, `b605vb2`, `bspqc4v`). New blocks added in
+  this session use `bair*` (Two paragraph + field-context coda),
+  `bw04*` (the 2004 mechanics quote), and `bgrnd*` (the
+  grandchildren loop). Match the editor's pattern for any new
+  blocks.
+
+What's currently in the lay essay vs the technical writeup:
+
+- The lay essay does NOT include the SCALE_CAP / bbox-snap /
+  responsive-embed work. Those are inside-baseball and live only
+  in the technical writeup (§X.11, §X.9, §VI.7). Don't move them
+  across unless asked.
+- The lay essay DOES include the *grandchildren / family albums*
+  loop (postscript blocks `bgrnd1` `bgrnd2` `bgrnd3`) and the 2004
+  mechanics quote (writeup-section blocks `bw04tlk` `bw04qot`).
+  Both came from the .oo3 extractions in
+  `_Documentation/2004-omnioutliner-source.md`.
 
 ## Staging deploy
 

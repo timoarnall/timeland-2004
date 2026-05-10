@@ -21,10 +21,21 @@ are in `../_archive_2004/`.
 
 ## Source-document captures
 
-- `2004-gpsexperience-source.md` — Even Westvang's contemporary
-  writeup of the GPS+image work (transcribed).
-- `2004-omnioutliner-source.md` — outline notes from the 2004
-  workshop period.
+Extractions from `.oo3` OmniOutliner documents Timo wrote in 2004,
+transcribed to Markdown so the prose survives the format. Source
+files in `/Volumes/Groke/Projects/2001-2017 - Writing and Publications/`.
+
+- `2004-omnioutliner-source.md` — *homebrew photo mapping*: pre-workshop
+  design brief, the "Beyond the technology" conceptual aims (including
+  the line *"How will grandchildren access it in the way that I view
+  my family albums?"* — twenty-two years before Even's *"talking to
+  your grandma in the box"*), and the Iceland workshop talk script
+  that describes the SWF's mechanics in Timo's 2004 voice.
+- `2004-gpsexperience-source.md` — Timo's field notes from carrying
+  the Garmin eTrex around in 2004. The phenomenology of the device
+  (*fast turns make wild deviations*, *the map is just too
+  interesting*, *popular routes build up in blackness and thickness*).
+  Companion to the design brief above.
 
 ## Comparison videos
 
