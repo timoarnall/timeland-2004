@@ -1,0 +1,1082 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time that land forgot</title>
+<style>
+:root {
+  /* Body matches the host page colour explicitly (white in light mode,
+     near-black in dark mode) — Safari does not always paint a transparent
+     iframe through to the host page bg. The stage itself is the artwork
+     and stays warm light grey in both modes. */
+  color-scheme: light dark;
+  --body-bg: #ffffff;
+  --artefact-bg: #f9f8f6;
+  --fg: #000000;
+  --muted: #888888;
+  --accent: #c40000;
+  --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --base: 11px;
+  --play-bg: rgba(128,128,128,0.20);
+  --play-bg-hover: rgba(128,128,128,0.32);
+  --play-icon: #8a847b;
+  --scrub-track: rgba(128,128,128,0.22);
+  --scrub-thumb: #8a847b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --body-bg: #111;       /* matches elasticspace dark --paper */
+    --fg: #cccac5;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--body-bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
+body { display: flex; flex-direction: column; align-items: stretch; justify-content: center; }
+#stage { position: relative; width: 100%; aspect-ratio: 1 / 1; background: var(--artefact-bg); border-radius: 3px; overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; background: var(--artefact-bg); border-radius: 3px; }
+#controls {
+  width: 100%; padding: 26px 0 0;
+  display: flex; align-items: center; gap: 18px;
+}
+#play {
+  flex: 0 0 auto;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--play-bg);
+  border: 0; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 120ms ease;
+}
+#play:hover { background: var(--play-bg-hover); }
+#play svg { width: 11px; height: 11px; fill: var(--play-icon); display: block; }
+#scrub {
+  flex: 1 1 auto;
+  -webkit-appearance: none; height: 6px; background: var(--scrub-track);
+  border-radius: 3px; outline: none; margin: 0;
+  cursor: pointer;
+}
+#scrub::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--scrub-thumb); cursor: pointer; border: 0;
+}
+#scrub::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; background: var(--scrub-thumb); cursor: pointer; border: 0;
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <canvas id="c" width="500" height="500"></canvas>
+</div>
+
+<div id="controls">
+  <button id="play" aria-label="Play">
+    <svg id="play-icon" viewBox="0 0 12 12"><polygon points="2,1 11,6 2,11"/></svg>
+  </button>
+  <input id="scrub" type="range" min="0" max="10000" value="0" step="1">
+</div>
+
+<script>
+"use strict";
+
+// ============================================================================
+// Time that land forgot — 2026 recreation of the 2004 Flash piece.
+//
+// Original: Timo Arnall + Even Westvang, July 2004, at the Inside and Out
+// workshop in Höfn, Iceland. A Macromedia Flash MX (.fla) source compiled
+// to Flash 6 (.swf), embedded on elasticspace.com. Browsers dropped Flash
+// in 2020 and the piece went dark. This file is the rebuild.
+//
+// What it preserves: the SWF's mechanics, byte for byte. Spring constants,
+// physics tick order, the bloom curve, the trkpt-paced parser. The only
+// non-faithful values are flagged below (SCALE_CAP and the +15% marker
+// bump in pathOctagonMinute), each calibrated to the screen-recording in
+// _archive_2004/time_land_forgot.mov.
+//
+// Reading order, for a future archaeologist:
+//   1. _Documentation/2026-archaeology.md   — section by section reference
+//      for every decision (cited inline below as e.g. §V.10, §VII.7, §X.11).
+//   2. _archive_2004/swfdump_full.txt        — the SWF disassembly, the
+//      primary source of truth for the mechanics.
+//   3. _archive_2004/time_land_forgot.mov   — the only continuous record
+//      of the piece in motion.
+//   4. _archive_2004/README_2004.txt + the original blog post at
+//      elasticspace.com/2004/07/timeland — the design intent.
+//
+// The article that frames the work conceptually is at
+// /2026/05/timeland-archaeology on elasticspace.com (source HTML in
+// 2026 - Elasticspace update / 01-content / drafts /
+// draft-timeland-archaeology-2026.html). See it for the *why* behind
+// the bug-vs-feature line, the survival-package argument, and the
+// distinction between pixel-accurate and feeling-preserving.
+//
+// What this file is NOT: a tool. The first port was a dark Leaflet map
+// with photos as dots — a tool. The piece is a film. If a future port
+// drifts toward "interactive GPS photo viewer" affordances, the work
+// has been lost regardless of how faithful the constants are. See
+// §XI item 1 of the archaeology and the *What I did, that AI could
+// not* section of the article.
+// ============================================================================
+
+// ============================================================================
+// Constants ported from the SWF — every numeric in §V.10 of the
+// archaeology, with its DoAction source. Disagree with these only with
+// evidence from the swfdump or the .mov.
+// ============================================================================
+const SWF_W = 500, SWF_H = 500;       // stage dims, swfdump header
+const G_LAT_SCALE = -800;             // gLatScale, DoAction_16:83. lat → y
+const G_LON_SCALE =  400;             // gLonScale, DoAction_16:84. lon → x
+                                      // (see §VII.3 — this 2:1 squash *is*
+                                      // the visual identity; not a bug.)
+const BASE_SCALE  = 0.5;              // 'centre' sprite placement scale
+const BASE_TX     = 203;              // 'centre' placement (203, 205): the
+const BASE_TY     = 205;              // origin offset for all canvas draws.
+
+// CAMDRAWING spring (DoAction_4:42–48). Tracks the parser's current trkpt.
+// vel += err/40; vel *= 0.69. Underdamped so the camera carries momentum
+// and overshoots — see §V.4 / §X.2 — that overshoot is what makes the
+// piece feel *alive* at stops; a critically-damped first-order ease just
+// glides in and reads as inert.
+const SPRING_K_CAM    = 1 / 40;
+const SPRING_DAMP_CAM = 0.69;
+
+// EXTENTS spring (DoAction_4:63–69). Tracks the full-trip bbox at end of
+// playback. Stiffer (1/3 vs 1/40) and more damped (0.59 vs 0.69) so the
+// final pull-back reads as a single deliberate move, not a wander.
+const SPRING_K_EXT    = 1 / 3;
+const SPRING_DAMP_EXT = 0.59;
+
+// Camera scale cap (DoAction_4:96 says 2500 in v19). The port runs 3800.
+// The .mov was screen-recorded against an earlier SWF whose cap was
+// closer to 3800 — at 2500 the recreation read clearly more zoomed-out
+// than the .mov on walking-phase frames (Reykjavík, Geysir, the tile
+// section). Verified by parameter sweep across 8 timeline moments × 4
+// caps; 3800 sat consistently closest to the .mov. See §X.11 for the
+// sweep method and §VII.7 for the principle (calibration to the .mov,
+// not v19, is the right call when v19 ≠ what was screen-recorded). The
+// safety bloom cap MAX_FINAL_SCALE downstream is `80 × (SCALE_CAP/2500)`
+// so it auto-tracks any change here.
+const SCALE_CAP       = 3800;
+
+const TRAIL_WINDOW    = 15;        // DoAction_4:38: slice(-15, -1) → last 14
+                                   // minutes drive the camera bbox.
+const NEW_MINUTE_MS   = 30000;     // DoAction_5:39: 30 s gap = new minute
+                                   // marker.
+
+const PHOTO_DIR = 'data/photos/';
+const GPX_URL   = 'data/timo_iceland_noflight.gpx';
+const XML_URL   = 'data/imageData.xml';
+
+// ============================================================================
+// Parsing
+// ============================================================================
+// Camera was set to GPS/UTC time in 2004 (Timo's recollection, confirmed
+// empirically by the Geysir-pause test — see §X.5: 32-minute pause at
+// 64.31 N, −20.30 W, 5 photos in window all show Geysir content). EXIF
+// and GPX are therefore both true UTC. The .mov's displayed clock reads
+// 2h earlier than reality because Flash 6's setHours() reinterpreted GPX
+// Z and EXIF strings as local CEST on Even's machine — see §VII.2 / §X.4
+// for the bug, and §VII.7 for why the label was reverted to truth on
+// 2026-05-09. Honour the camera, not the .mov labels.
+function parseGPX(text) {
+  const xml = new DOMParser().parseFromString(text, 'application/xml');
+  const pts = [];
+  for (const n of xml.getElementsByTagName('trkpt')) {
+    const tNode = n.getElementsByTagName('time')[0];
+    if (!tNode) continue;
+    const t = Date.parse(tNode.textContent);
+    if (isNaN(t)) continue;
+    const eNode = n.getElementsByTagName('ele')[0];
+    const lat = +n.getAttribute('lat');
+    const lon = +n.getAttribute('lon');
+    pts.push({
+      raw_lat: lat, raw_lon: lon,
+      x: lon * G_LON_SCALE,        // SWF projection
+      y: lat * G_LAT_SCALE,
+      ele: eNode ? +eNode.textContent : 0,
+      t,
+    });
+  }
+  pts.sort((a, b) => a.t - b.t);
+  return pts;
+}
+
+function parseImages(text) {
+  const xml = new DOMParser().parseFromString(text, 'application/xml');
+  const out = [];
+  for (const n of xml.getElementsByTagName('image')) {
+    const file = n.getElementsByTagName('file')[0].textContent.trim();
+    const tStr = n.getElementsByTagName('time')[0].textContent.trim();
+    const m = tStr.match(/(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+    if (!m) continue;
+    const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    out.push({ file, t });
+  }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+
+function lastIndexBefore(arr, t, key = 't') {
+  if (arr.length === 0 || t < arr[0][key]) return -1;
+  if (t >= arr[arr.length - 1][key]) return arr.length - 1;
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid][key] <= t) lo = mid; else hi = mid;
+  }
+  return lo;
+}
+function nearestPoint(pts, t) {
+  if (t <= pts[0].t) return pts[0];
+  if (t >= pts[pts.length - 1].t) return pts[pts.length - 1];
+  const i = lastIndexBefore(pts, t);
+  const a = pts[i], b = pts[i + 1];
+  return (t - a.t) < (b.t - t) ? a : b;
+}
+
+// ============================================================================
+// Time formatting — Iceland time (UTC year-round, no DST)
+// "Wed Jun 30 15:38:25 GMT 2004"
+// ============================================================================
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const pad2 = n => String(n).padStart(2, '0');
+function fmtFlashDate(t) {
+  // Display the trkpt's true Iceland local time. Iceland is on GMT
+  // year-round (no DST), so the underlying UTC value IS the local time
+  // and the label is "GMT". The SWF v19 .mov displayed this same time
+  // suffixed "GMT+0200" because Flash 6 on Even's CEST machine parsed
+  // the GPX Z text as local CEST and Date.toString() then re-serialised
+  // with the player's TZ label. That label was bug-frozen text that read
+  // 2 hours ahead of the trip's actual local time. Reverted to truth so
+  // a viewer following the trip — when did we leave Höfn, when did we
+  // reach Reykjavík — can read the clock as the trip clock. See
+  // _Documentation/2026-archaeology.md §VII.2 + §VII.7 for the principle.
+  const d = new Date(t);   // true UTC = Iceland local
+  return DAYS[d.getUTCDay()] + ' ' + MONTHS[d.getUTCMonth()] + ' ' + pad2(d.getUTCDate())
+       + ' ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds())
+       + ' GMT ' + d.getUTCFullYear();
+}
+
+// ============================================================================
+// Trail / bucket: build minute and hour arrays from full GPX. Matches
+// TrackKeeper.addPoint (DoAction_5.as): a new minute marker every time a
+// trkpt's timestamp is more than 30000 ms past the last marker, a new
+// hour marker every time getHours() changes. The 30 s threshold (not 60)
+// is what the SWF used and is the source of the trail's *visual* density:
+// pauses produce closely-spaced markers; motion produces sparse ones. See
+// §V.5 of the archaeology.
+// ============================================================================
+function buildTrail(pts) {
+  const minutes = [];
+  const hours   = [];
+  let lastMinT = -Infinity, lastHourH = -1;
+  for (const p of pts) {
+    if (p.t > lastMinT + NEW_MINUTE_MS) {
+      minutes.push(p);
+      lastMinT = p.t;
+    }
+    const hr = Math.floor(p.t / 3600000);
+    if (hr !== lastHourH) {
+      hours.push(p);
+      lastHourH = hr;
+    }
+  }
+  return { minutes, hours };
+}
+
+// ============================================================================
+// Camera — direct port of CameraKeeper from DoAction_4.as. See §V.4 of the
+// archaeology for the SWF logic and §X.2 / §X.9 for the ports of the
+// damped spring and the seek bbox-snap. Two states: CAMDRAWING tracks the
+// parser's current trkpt + the last-14-minutes bbox; EXTENTS tracks the
+// full-trip bbox (only enters at end of trip — see frame() below). The
+// SWF defines a third state, LOCALTIME, that is never used at runtime;
+// not ported (§VI.8).
+// ============================================================================
+function makeCamera(mapW, mapH) {
+  return {
+    state: 'CAMDRAWING',  // 'CAMDRAWING' | 'EXTENTS'
+    cur:   { x: 0, y: 0 }, dest: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    cur1:  { x: -mapW/2, y: -mapH/2 }, cur2:  { x: mapW/2, y: mapH/2 },
+    dest1: { x: -mapW/2, y: -mapH/2 }, dest2: { x: mapW/2, y: mapH/2 },
+    vel1:  { x: 0, y: 0 }, vel2:  { x: 0, y: 0 },
+    xCoord: 0, yCoord: 0,
+    scale_pct: 90,
+    initialized: false,
+  };
+}
+
+// Iterate points[startIdx, endIdx) and set cam.dest1/dest2 to the bbox.
+// The `|| x1 === 0` guard mirrors the AS2 source (DoAction_4:114–140,
+// §VII.6): the original initialised x1=y1=x2=y2=0 with no `var`, so the
+// loop only updates when the new point is past the running min/max OR
+// the slot is still 0. With Iceland coords (negative lon × 400 → very
+// negative x; negative lat × −800 → very negative y) the first point
+// always replaces the 0 sentinel, so the algorithm is correct in
+// practice. Preserved as-is to match the reference behaviour exactly;
+// the AS2 scope leak is documented in §VII.6 and not replicated here
+// (we use `let`).
+function refocus(cam, points, startIdx, endIdx) {
+  let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+  for (let i = startIdx; i < endIdx; i++) {
+    const p = points[i];
+    if (p.x < x1 || x1 === 0) x1 = p.x;
+    if (p.y < y1 || y1 === 0) y1 = p.y;
+    if (p.x > x2 || x2 === 0) x2 = p.x;
+    if (p.y > y2 || y2 === 0) y2 = p.y;
+  }
+  cam.dest1.x = x1; cam.dest1.y = y1;
+  cam.dest2.x = x2; cam.dest2.y = y2;
+}
+
+// `minutes` is the full markers array; only the first `minutesLen` entries are
+// active. Avoids slicing the array every physics tick (up to 8/render frame).
+function cameraAnimate(cam, minutes, minutesLen, bounds, mapW) {
+  if (cam.state === 'CAMDRAWING' && minutesLen > 0) {
+    if (minutesLen > TRAIL_WINDOW) {
+      // last 14 of 15 — equivalent to slice(-15, -1) on the active prefix
+      refocus(cam, minutes, minutesLen - TRAIL_WINDOW, minutesLen - 1);
+    }
+    const last = minutes[minutesLen - 1];
+    cam.dest.x = last.x; cam.dest.y = last.y;
+
+    // First-frame snap so we don't have a violent intro
+    if (!cam.initialized) {
+      cam.cur.x = cam.dest.x; cam.cur.y = cam.dest.y;
+      cam.cur1.x = cam.dest1.x; cam.cur1.y = cam.dest1.y;
+      cam.cur2.x = cam.dest2.x; cam.cur2.y = cam.dest2.y;
+      cam.initialized = true;
+    } else {
+      cam.vel.x  += (cam.dest.x  - cam.cur.x ) * SPRING_K_CAM;
+      cam.vel.y  += (cam.dest.y  - cam.cur.y ) * SPRING_K_CAM;
+      cam.vel.x *= SPRING_DAMP_CAM; cam.vel.y *= SPRING_DAMP_CAM;
+      cam.cur.x += cam.vel.x;       cam.cur.y += cam.vel.y;
+
+      cam.vel1.x += (cam.dest1.x - cam.cur1.x) * SPRING_K_CAM;
+      cam.vel1.y += (cam.dest1.y - cam.cur1.y) * SPRING_K_CAM;
+      cam.vel2.x += (cam.dest2.x - cam.cur2.x) * SPRING_K_CAM;
+      cam.vel2.y += (cam.dest2.y - cam.cur2.y) * SPRING_K_CAM;
+      cam.vel1.x *= SPRING_DAMP_CAM; cam.vel1.y *= SPRING_DAMP_CAM;
+      cam.vel2.x *= SPRING_DAMP_CAM; cam.vel2.y *= SPRING_DAMP_CAM;
+    }
+  }
+
+  if (cam.state === 'EXTENTS') {
+    cam.dest1.x = bounds.minLat; cam.dest1.y = bounds.minLon;
+    cam.dest2.x = bounds.maxLat; cam.dest2.y = bounds.maxLon;
+    cam.vel1.x += (cam.dest1.x - cam.cur1.x) * SPRING_K_EXT;
+    cam.vel1.y += (cam.dest1.y - cam.cur1.y) * SPRING_K_EXT;
+    cam.vel2.x += (cam.dest2.x - cam.cur2.x) * SPRING_K_EXT;
+    cam.vel2.y += (cam.dest2.y - cam.cur2.y) * SPRING_K_EXT;
+    cam.vel1.x *= SPRING_DAMP_EXT; cam.vel1.y *= SPRING_DAMP_EXT;
+    cam.vel2.x *= SPRING_DAMP_EXT; cam.vel2.y *= SPRING_DAMP_EXT;
+  }
+
+  // bbox velocities applied unconditionally (matches SWF)
+  cam.cur1.x += cam.vel1.x; cam.cur1.y += cam.vel1.y;
+  cam.cur2.x += cam.vel2.x; cam.cur2.y += cam.vel2.y;
+
+  if (cam.state === 'CAMDRAWING') {
+    cam.xCoord = cam.cur.x;
+    cam.yCoord = cam.cur.y;
+  } else {
+    cam.xCoord = (cam.cur2.x - cam.cur1.x) / 2 + cam.cur1.x;
+    cam.yCoord = (cam.cur2.y - cam.cur1.y) / 2 + cam.cur1.y;
+  }
+
+  // SWF v19 CAMDRAWING uses 90×, EXTENTS uses 100× (DoAction_4:91 / :94).
+  // The factor is the ratio of stage size to bbox width; both scale_pct and
+  // the photo bloom downstream read as percentages, so a value of 90 here
+  // means "the bbox would fill 90% of the stage". The cap (SCALE_CAP) is
+  // the max zoom; see the constant above for why we run 3800 not 2500.
+  const w = cam.cur2.x - cam.cur1.x;
+  let s = (cam.state === 'CAMDRAWING' ? 90 : 100) * mapW / Math.max(0.001, w);
+  if (s > SCALE_CAP) s = SCALE_CAP;
+  cam.scale_pct = s;
+}
+
+// ============================================================================
+// Shape primitives — match SWF DEFINESHAPE bodies. Built once as Path2D,
+// reused per draw call. Caching them is one of the perf wins (was: rebuild
+// path with beginPath/moveTo/lineTo per marker per frame). See §V.9.
+// ============================================================================
+// Shape id 0006: octagon. SWF source vertices span 0.40 design units (i.e.
+// ±0.15 corners, ±0.20 mid-edges). Port runs ×1.15 = ±0.173 / ±0.230 so
+// markers read at SWF-faithful pixel size when the .mov is upsampled from
+// native 478 to 500 in the side-by-side rig. Flagged in §X.11 / §XV.5
+// alongside SCALE_CAP=3800 as the only two non-faithful constants — both
+// rig calibrations rather than fidelity claims.
+const PATH_OCTAGON = new Path2D();
+PATH_OCTAGON.moveTo(-0.173, -0.173);
+PATH_OCTAGON.lineTo(-0.230,  0.000);
+PATH_OCTAGON.lineTo(-0.173,  0.173);
+PATH_OCTAGON.lineTo( 0.000,  0.230);
+PATH_OCTAGON.lineTo( 0.173,  0.173);
+PATH_OCTAGON.lineTo( 0.230,  0.000);
+PATH_OCTAGON.lineTo( 0.173, -0.173);
+PATH_OCTAGON.lineTo( 0.000, -0.230);
+PATH_OCTAGON.lineTo(-0.173, -0.173);
+
+// shape id 0003: 3-arm cross around (0.80, 0.75) — placement applies (-0.80, -0.75) so origin is at point
+const PATH_MINUTEFRONT = new Path2D();
+PATH_MINUTEFRONT.moveTo(0.80, 0.10); PATH_MINUTEFRONT.lineTo(0.80, 0.75); PATH_MINUTEFRONT.lineTo(1.60, 0.75);
+PATH_MINUTEFRONT.moveTo(0.80, 1.65); PATH_MINUTEFRONT.lineTo(0.80, 0.75); PATH_MINUTEFRONT.lineTo(0.15, 0.75);
+
+// shape id 0009: hour cross
+const PATH_HOUR = new Path2D();
+PATH_HOUR.moveTo( 0.05, -1.10); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo( 1.50, 0.05);
+PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(-1.40, 0.05);
+
+// ============================================================================
+// Main
+// ============================================================================
+(async function main() {
+  const [gpxText, xmlText] = await Promise.all([
+    fetch(GPX_URL).then(r => r.text()),
+    fetch(XML_URL).then(r => r.text()),
+  ]);
+  const allPts = parseGPX(gpxText);
+  const photos = parseImages(xmlText);
+  const { minutes, hours } = buildTrail(allPts);
+
+  // Associate each photo with the trkpt at its EXIF time (this is what
+  // Image.setPointReference does in DoAction_6.as / §V.6). Note that we
+  // place the photo at the *trkpt's* projected position, not at the photo's
+  // own coords — the GPS data is the spatial source of truth, the photo
+  // is the temporal one. (The 2004 EXIF timestamps are at second
+  // resolution; GPS is at second-or-better; nearest-by-time is plenty.)
+  for (const p of photos) {
+    const g = nearestPoint(allPts, p.t);
+    p.x = g.x; p.y = g.y; p.ele = g.ele;
+    // SWF's per-photo Image.timer (DoAction_6:45–46). 0 → 100 over 83
+    // frames, increments 1.2 per animate frame ONLY while the photo is
+    // active (T ≥ photo.t). Independent of trip time. Reaches 100 in
+    // 2.77 s real at 30 fps; SWF clamps `_alpha` at 100 so the bug at
+    // §VII.4 (the loadfinished typo that prevents the reset) is invisible.
+    p.timer = 0;
+  }
+
+  // bounds for EXTENTS state — note: SWF tracks min/maxLat/Lon in projected space
+  // (via updateExtents called with already-scaled lon, lat values)
+  let minLat =  Infinity, maxLat = -Infinity, minLon =  Infinity, maxLon = -Infinity;
+  for (const p of minutes) {
+    if (p.x < minLat) minLat = p.x; if (p.x > maxLat) maxLat = p.x;   // x = lon*400
+    if (p.y < minLon) minLon = p.y; if (p.y > maxLon) maxLon = p.y;   // y = lat*-800
+  }
+  // SWF maps these into camera as (destX1=minLat, destY1=minLon, destX2=maxLat, destY2=maxLon)
+  // The naming is wrong in the SWF but values are bounds-of-projected-x and bounds-of-projected-y.
+  const bounds = { minLat, maxLat, minLon, maxLon };
+
+  const camera = makeCamera(SWF_W, SWF_H);
+
+  // photo image cache
+  const imgCache = new Map();
+  function getImg(file) {
+    let img = imgCache.get(file);
+    if (img) return img;
+    img = new Image();
+    img.src = PHOTO_DIR + file;
+    imgCache.set(file, img);
+    return img;
+  }
+  // pre-warm next few images near current cursor
+  function preloadNear(idxPhoto) {
+    const lo = Math.max(0, idxPhoto - 2);
+    const hi = Math.min(photos.length - 1, idxPhoto + 4);
+    for (let i = lo; i <= hi; i++) getImg(photos[i].file);
+  }
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  // The canvas fills its CSS container at any size; sync the drawing buffer
+  // so we don't blur on hosts wider than 500px. canvasScale maps SWF-design
+  // units (500-wide) to drawing-buffer pixels.
+  let canvasScale = 1;
+  function syncCanvasSize() {
+    const cssW = canvas.clientWidth  || SWF_W;
+    const cssH = canvas.clientHeight || SWF_H;
+    const css  = Math.max(cssW, cssH);
+    const dpr  = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const buf  = Math.max(1, Math.round(css * dpr));
+    if (canvas.width  !== buf) canvas.width  = buf;
+    if (canvas.height !== buf) canvas.height = buf;
+    canvasScale = buf / SWF_W;
+  }
+  syncCanvasSize();
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncCanvasSize).observe(canvas);
+  } else {
+    window.addEventListener('resize', syncCanvasSize);
+  }
+
+  // Reproduce the SWF's display chain: the 'centre' sprite is placed at
+  // (203, 205) with scale 0.5, then the inner camera canvas applies the
+  // camera scale (percent) and the inverse of the camera world-coords
+  // origin. Same matrix as Flash's PlaceObject2 + _xscale + _x/_y. See
+  // §V.1 / §V.4.
+  function applyCanvasTransform() {
+    ctx.translate(BASE_TX, BASE_TY);                          // 'centre' placement
+    const k = (camera.scale_pct / 100) * BASE_SCALE;          // camera _xscale × 0.5
+    ctx.scale(k, k);
+    ctx.translate(-camera.xCoord, -camera.yCoord);            // innerCanvas._x = -xCoord
+  }
+
+  // Flash MX stores stroke widths in twips (1 twip = 0.05 px = "hairline"),
+  // and Flash renders hairlines as 1 *screen* pixel regardless of zoom.
+  // Canvas2D has no hairline mode, so we replicate by setting
+  // lineWidth = 1 / current_transform_scale, recomputed per draw call.
+  // See §VI.4.
+  //
+  // Draw functions take the markers array + active count (not a slice) so
+  // there's no hot-path allocation. Per-marker save/restore was replaced
+  // with translate-back: save/restore copies the whole ctx state stack
+  // (alpha, fillStyle, lineWidth, transform), and we only need to undo
+  // the transform.
+  function drawMinutes(minutes, activeLen) {
+    if (activeLen <= 0) return;
+    const baseK = (camera.scale_pct / 100) * BASE_SCALE;
+
+    // Pass 1: minutefront (sprite 0005 inside minute, CXForm a=0.2) —
+    // grey 3-arm cross. Note: the SWF *defines* this sprite but the
+    // attachMovieClip(...,"minutefront",true) call is commented out in
+    // the FLA strings dump, so the original may not have rendered it at
+    // runtime. The port draws it because it adds welcome subtle grey
+    // detail and it's harmless if absent. See §V.9 caveat in the
+    // archaeology.
+    ctx.strokeStyle = '#333333';
+    ctx.globalAlpha = 0.20;
+    ctx.lineWidth   = 1 / baseK;
+    for (let i = 0; i < activeLen; i++) {
+      const m = minutes[i];
+      const dx = m.x - 0.80, dy = m.y - 0.75;
+      ctx.translate(dx, dy);
+      ctx.stroke(PATH_MINUTEFRONT);
+      ctx.translate(-dx, -dy);
+    }
+
+    // Pass 2: minute octagon (sprite 0008, CXForm mul a=0.5). Red, with a
+    // per-marker scale that derives from elevation:
+    //     ms = (max(0, ele) * 0.8 + 80) / 100
+    // i.e. 0.80 at sea level, 1.04 at 30 m, etc. From DoAction_5.as as
+    // the Minute.scale formula. The result: high-altitude markers are
+    // visually larger, encoding elevation as size of the ring.
+    ctx.strokeStyle = '#c40000';
+    ctx.globalAlpha = 0.50;
+    for (let i = 0; i < activeLen; i++) {
+      const m = minutes[i];
+      const ms = (Math.max(0, m.ele) * 0.8 + 80) / 100;
+      ctx.translate(m.x, m.y);
+      ctx.scale(ms, ms);
+      ctx.lineWidth = 1 / (baseK * ms);                   // hairline at this scale
+      ctx.stroke(PATH_OCTAGON);
+      const inv = 1 / ms;
+      ctx.scale(inv, inv);
+      ctx.translate(-m.x, -m.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHours(hours, activeLen) {
+    if (activeLen <= 0) return;
+    const baseK = (camera.scale_pct / 100) * BASE_SCALE;
+    ctx.strokeStyle = '#743636';
+    ctx.globalAlpha = 1.0;
+    ctx.lineWidth   = 1 / baseK;                          // hairline
+    for (let i = 0; i < activeLen; i++) {
+      const h = hours[i];
+      ctx.translate(h.x, h.y);
+      ctx.stroke(PATH_HOUR);
+      ctx.translate(-h.x, -h.y);
+    }
+  }
+
+  // ============================================================================
+  // The 30-fps lie + truth.
+  //
+  // The SWF header declares Frame rate 120. The first port took it at
+  // face value; the piece played 4× too fast. The actual rate, measured
+  // by counting trkpts (5,869) and dividing by .mov runtime (192 s), is
+  // 30.6/sec. Every spring constant in the file (×0.69, ×0.59, ×0.1) is
+  // critically damped at 30 Hz and overdamped at 120 Hz — they were
+  // calibrated for the lower rate. The transient response only reads
+  // right when we tick at the same Hz the SWF actually ran at.
+  //
+  // All durations downstream are in this rate's frame-units:
+  //   FADE_PER_SWF_FRAME = 1.2 → 100/1.2 ≈ 83 frames = 2.77 s real.
+  //
+  // See §X.1 of the archaeology, and the article: *"It trusted the file
+  // headers. The SWF declares a frame rate of 120. Claude used that. The
+  // piece played four times too fast."*
+  // ============================================================================
+  const SWF_FPS = 30;
+  const SWF_FRAME_MS = 1000 / SWF_FPS;     // 33.3 ms
+  const FADE_PER_SWF_FRAME = 1.2;          // DoAction_6:45
+
+  function drawPhotos(T, activePhotoCount) {
+    const k = (camera.scale_pct / 100) * BASE_SCALE;
+    // MAX_FINAL_SCALE protects ctx.drawImage from absurd first-frame
+    // sizes (the bloom curve goes to ~9e6 at the activation moment).
+    // 80 was the value that matched the natural curve at the v19 cap of
+    // 2500 (k=12.5 → 80/12.5 ≈ 6.4 = the bloom value at tick 1 of the
+    // median 14-second GPS gap). With SCALE_CAP=3800 we scale this
+    // proportionally so the bloom→settle dynamic stays smooth at any
+    // cap (§VI.6 + §X.11). Don't tune this without retuning SCALE_CAP.
+    const MAX_FINAL_SCALE = 80 * (SCALE_CAP / 2500);
+
+    // pre-load lookahead
+    if (activePhotoCount > 0) preloadNear(activePhotoCount - 1);
+
+    // Sprite id 0014 ("image") — layer order in the SWF:
+    //   depth 1: outline shape id 0011, scale (1.0, 0.887), full alpha
+    //   depth 2: placeholder sprite id 0013, CXForm mul a=0.1
+    // Outline draws first underneath, then the photo on top.
+    //
+    // PHOTO_ALPHA_CAP = 1.0 was the seventh and final value for this
+    // constant. Earlier passes tried 0.10 (literal CXForm reading), then
+    // 0.35, 0.55, 0.85, 0.30, 0.20 — all on the assumption that the
+    // CXForm `mul a=0.1` capped photo alpha at 10%. It doesn't: AS2 sets
+    // `clip.placeholder._alpha = timer` (DoAction_6:54) which ramps 0→100
+    // over 83 frames = 2.77 s real at 30 fps; the `a=0.1` CXForm sat on
+    // the EMPTY placeholder, and Flash 6's loadMovie semantics replace
+    // the clip's contents *without* preserving the placement transform.
+    // So at `timer = 100` the photo is fully opaque. The layered
+    // see-through quality in the .mov is *size disparity*, not
+    // translucency: new photos bloom huge, old ones shrink to small
+    // frames behind (the bloom curve at line 655 below is what produces
+    // this). Stacks read as translucent because each layer is small and
+    // opaque against an opaque layer beneath. See §X.3 for the seven-pass
+    // history and the article: *"It went around in circles on
+    // transparency... the translucent quality was not translucency at
+    // all. It was size disparity."*
+    const PHOTO_ALPHA_CAP = 1.0;
+    for (let i = 0; i < activePhotoCount; i++) {
+      const p = photos[i];
+      const fadeAlpha = p.timer / 100;
+      if (fadeAlpha <= 0) continue;
+
+      // The bloom curve, DoAction_6:63 / §V.6:
+      //     scale = 3.5 + 9_000_000 / (Δt + 1)
+      // where Δt is ms between trip-time T and photo's EXIF time. At the
+      // activation moment Δt → 0 and scale → ~9e6 (clamped by
+      // MAX_FINAL_SCALE below); over the next few frames it shrinks
+      // rapidly through the viewport range and asymptotes at 3.5 (the
+      // floor). The /100 is because AS2 stored scale as a percent, JS
+      // canvas wants a multiplier. This single curve produces both the
+      // huge initial bloom *and* the quiet shrinking back-of-frame
+      // appearance — same formula, different Δt.
+      const dt = Math.abs(T - p.t);
+      let photoScale = (3.5 + 9_000_000 / (dt + 1)) / 100;
+      if (photoScale * k > MAX_FINAL_SCALE) photoScale = MAX_FINAL_SCALE / k;
+
+      const img = getImg(p.file);
+      ctx.translate(p.x, p.y);
+      ctx.scale(photoScale, photoScale);
+
+      // Outline: 320 × 212.8 (= 240 × 0.887), #dddddd hairline
+      ctx.globalAlpha = 1.0;
+      ctx.strokeStyle = '#dddddd';
+      ctx.lineWidth   = 1 / (k * photoScale);
+      ctx.strokeRect(-160, -106.4, 320, 212.8);
+
+      ctx.globalAlpha = fadeAlpha * PHOTO_ALPHA_CAP;
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, -160, -106.5, 320, 213);
+      }
+
+      const inv = 1 / photoScale;
+      ctx.scale(inv, inv);
+      ctx.translate(-p.x, -p.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Top-left text overlay: time, lat, lon, elevation. Layout matches the
+  // SWF's display sprite: placed at (13.10, 9.00) scale 0.619, with
+  // children at design coords (2,2) / (2,26) / (146.95,26) / (301,26) —
+  // resolves to the screen positions used below. See §V.9.
+  //
+  // The SWF had two display bugs in this overlay (§VII.1, §VII.2):
+  //   - parameter swap: `_long` field rendered the latitude (with "N")
+  //     and `_lat` field rendered the longitude (with "W").
+  //   - longitude divided by `gLatScale` (−800) instead of `gLonScale`
+  //     (400), producing values of constant ratio −0.5 vs the truth —
+  //     a "10.95 W mid-Atlantic" reading for trkpts that were actually
+  //     at −21.9 °W in the Reykjavík area.
+  //
+  // Both were preserved verbatim in the first port for archival fidelity
+  // and reverted on 2026-05-09 (§VII.7) under the criterion: keep a bug
+  // if it adds character, revert it if it obstructs the thing the work
+  // is trying to communicate. The clock and the lat/lon are values a
+  // viewer reads off the screen to *follow the trip* — Höfn, Reykjavík,
+  // Geysir — and reading the wrong values made the piece illegible as a
+  // record of Iceland in July 2004. The squashed projection (§VII.3)
+  // sat on the *charm* side: it gives Iceland its tall stretched look
+  // and is the visual identity of the piece. Stays. The article frames
+  // this in *What I did, that AI could not* under "Two".
+  function drawDisplay(trkpt) {
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.font = '11px ' + (getComputedStyle(document.body).getPropertyValue('--font') || 'monospace');
+    ctx.textBaseline = 'top';
+    ctx.fillText(fmtFlashDate(trkpt.t),                            14,  10);
+    ctx.fillText(trkpt.raw_lat.toFixed(6) + 'N',                   14,  25);
+    ctx.fillText((-trkpt.raw_lon).toFixed(6) + 'W',               104,  25);
+    ctx.fillText('elevation:' + trkpt.ele.toFixed(6) + 'm',       199,  25);
+    ctx.restore();
+  }
+
+  // ============================================================================
+  // Main loop
+  //
+  // Trkpt-paced playback (the "alive" unlock — §X.7).
+  //
+  // The SWF's AnimParser.animate (DoAction_14:15–30) advances one GPX
+  // trkpt per animate frame, regardless of timestamps. Pacing is shaped
+  // entirely by GPS sampling density: stops sample densely (every 1–2 s,
+  // so the parser dwells), motion samples sparsely (every 10–30 s, so
+  // the parser races). The first port advanced time linearly across the
+  // calendar — Geysir's 32-minute stop compressed to 1.5 real seconds,
+  // overnight gaps inflated to 10 seconds of static screen. Walking the
+  // array fixes both: stops dwell, motion races, empty time disappears.
+  //
+  // The 2004 blog post named this directly: *"There will be
+  // discontinuities in the tracklogs as the GPS is switched off during
+  // standstill and nights. Currently the system smoothes tracklog time
+  // to make breaks seem more like quick transitions."*
+  //
+  // Total playback: 5869 trkpts ÷ 30 fps = 195 s, matches .mov's 192 s.
+  // ============================================================================
+  const t0 = minutes[0].t;
+  const t1 = minutes[minutes.length - 1].t;
+
+  let parserIdx = 0;
+  let dispT = t0;
+  let targetT = t0;
+  let lastFrameTime = 0;          // for real-time tick accumulator
+  let physicsAccum = 0;           // fixed-timestep accumulator
+  let lastRenderTime = 0;         // 30-fps render-rate cap
+  let timeD = 0;                  // SWF TimeKeeper.timeD — 2nd-order velocity
+
+  // After EXTENTS is requested, run camera in EXTENTS state
+  function shouldEnterExtents() {
+    return targetT >= t1 - 1000;
+  }
+
+  function frame(now) {
+    // Fixed-timestep physics at the SWF's 30 fps animate rate. Each tick
+    // mirrors animationManager_tick (DoAction_13:15–25), in registration
+    // order: parser → timeKeeper → cameraKeeper → images. The order
+    // matters; reversing it would break the spring transient because
+    // timeKeeper reads parser's targetT and cameraKeeper reads the
+    // updated minute markers from the parser. See §VI.3 / §X.2.
+    const dt = lastFrameTime ? Math.min(100, now - lastFrameTime) : SWF_FRAME_MS;
+    lastFrameTime = now;
+    physicsAccum += dt;
+    let physicsTicks = 0;
+    while (physicsAccum >= SWF_FRAME_MS && physicsTicks < 8) {
+      physicsAccum -= SWF_FRAME_MS;
+      physicsTicks++;
+
+      // (1) Parser: advance exactly one trkpt per physics frame. This
+      // is the trkpt-paced playback that the article paragraph above the
+      // function comment explains. setT() also updates scrub.value so
+      // the scrubber tracks playback.
+      if (playing) {
+        if (parserIdx < allPts.length - 1) {
+          parserIdx += 1;
+          setT(allPts[parserIdx].t);
+        } else {
+          stopPlay();
+        }
+      }
+
+      // (2) TimeKeeper — DoAction_2.as ported verbatim:
+      //     timeD += (time - timeDest) * 4;
+      //     timeD *= 0.1;
+      //     time -= timeD;
+      // A damped second-order spring on the displayed clock. The parser
+      // jumps targetT in trkpt-sized steps; dispT chases with momentum
+      // and overshoot, which is what gives the displayed clock its
+      // characteristic *carry* — racing through fast-forwards then
+      // settling. A first-order ease (the obvious port) just glides;
+      // see §X.2 and the article's *misread bugs as features* line.
+      // The isNaN guard is a JS belt-and-braces; AS2's number coercion
+      // hides this kind of edge case.
+      timeD += (dispT - targetT) * 4;
+      timeD *= 0.1;
+      if (isNaN(timeD)) timeD = 0;
+      dispT -= timeD;
+
+      // (3) Camera state + animate. The SWF's TrackKeeper.buildFinished
+      // sets EXTENTS at end of trip (DoAction_5:65). We mirror by
+      // checking parser at last trkpt. cameraAnimate reads the active
+      // prefix of `minutes` (length-only, no slice — see §VI.3 perf
+      // pass).
+      camera.state = (parserIdx >= allPts.length - 1) ? 'EXTENTS' : 'CAMDRAWING';
+      const idxMinNow = lastIndexBefore(minutes, dispT);
+      cameraAnimate(camera, minutes, idxMinNow + 1, bounds, SWF_W);
+
+      // (4) Photo timers. AS2 fires
+      // imageKeeper.associateCurrentImage from inside TrackKeeper.addPoint
+      // (DoAction_5:32) — i.e. on parser-time (targetT), not on the
+      // eased dispT. So photos activate when the parser crosses the
+      // EXIF, not when the displayed clock catches up. Photos are
+      // sorted by time; once we reach one whose t > targetT *and* whose
+      // timer is already 0, every photo after it is also future-zero
+      // and we can stop. (The non-zero case happens during scrub-back
+      // and we still need to reset.)
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        if (targetT >= p.t) {
+          if (p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+        } else if (p.timer !== 0) {
+          p.timer = 0;
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Render-rate cap: lock to ~30 fps. The SWF's actual animate rate
+    // on 2004 hardware was ~30 (the 120 in the file header is a lie —
+    // see §X.1 / SWF_FPS comment above). Every spring/fade constant
+    // was calibrated for that rate. Modern rAF runs at display refresh
+    // (60–120 Hz); above 30 fps we'd be re-rendering identical physics
+    // states. Physics still runs every rAF in fixed-timestep above, so
+    // motion is unaffected — only the *draw* is gated. The +1 is a slop
+    // tolerance against rAF's slight jitter.
+    if (now - lastRenderTime + 1 < SWF_FRAME_MS) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    lastRenderTime = now;
+
+    // Render uses dispT for active sets (after physics ticks)
+    const idxMin = lastIndexBefore(minutes, dispT);
+    const idxHr  = lastIndexBefore(hours, dispT);
+    const idxPhoto = lastIndexBefore(photos, dispT);
+    const activeMinutesLen = idxMin   + 1;     // 0 if idxMin = -1
+    const activeHoursLen   = idxHr    + 1;
+    const activePhotoCount = idxPhoto + 1;
+
+    // clear
+    ctx.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
+    ctx.fillStyle = bgOverride || '#f9f8f6';   // artefact bg — matches CSS, subtle warm grey
+    ctx.fillRect(0, 0, SWF_W, SWF_H);
+
+    // canvas-space draws, clipped to the SWF stage rect so the huge
+    // bloomed photos at activation don't burn cycles outside the
+    // viewport. (At dt → 0 the bloom curve goes to ~9e6; even with
+    // MAX_FINAL_SCALE clamping, the resulting drawImage is several
+    // canvas-widths across before the clip truncates it.)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, SWF_W, SWF_H);
+    ctx.clip();
+    applyCanvasTransform();
+    // SWF z-order (§VI.5 / §X.8). TrackKeeper.addPoint
+    // (DoAction_5:24–34) attaches an Image first, then a Minute, then
+    // an Hour, with clipIterator++ for each — so markers end up at
+    // higher depths and Flash renders them on top of photos. Required
+    // correction during the session once Timo noticed photos sitting
+    // above markers in the recreation.
+    drawPhotos(dispT, activePhotoCount);
+    drawMinutes(minutes, activeMinutesLen);
+    drawHours(hours,    activeHoursLen);
+    ctx.restore();
+
+    // Top-left overlay (screen space). The SWF wrote the *last parsed*
+    // trkpt's time to display._displayTime (DoAction_5:23), not the
+    // eased timeKeeper value — so the displayed clock jumps with the
+    // parser even while the spring is mid-overshoot. Mirror by reading
+    // parserIdx directly, not dispT.
+    if (allPts.length > 0) {
+      const idx = Math.min(allPts.length - 1, Math.floor(parserIdx));
+      drawDisplay(allPts[idx]);
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // ============================================================================
+  // Controls
+  // ============================================================================
+  const scrub = document.getElementById('scrub');
+  const playBtn = document.getElementById('play');
+  const playIcon = document.getElementById('play-icon');
+  const ICON_PLAY  = '<polygon points="2,1 11,6 2,11"/>';
+  const ICON_PAUSE = '<rect x="2" y="1" width="3" height="10"/><rect x="7" y="1" width="3" height="10"/>';
+
+  function setT(t, jump = false) {
+    targetT = Math.max(t0, Math.min(t1, t));
+    if (jump) dispT = targetT;
+    // Scrub tracks parserIdx (uniform per-trkpt) so the playhead moves at
+    // a steady rate as the parser advances, instead of jumping unevenly
+    // because trkpts aren't evenly spaced in time.
+    const sv = Math.round(parserIdx / (allPts.length - 1) * +scrub.max);
+    if (+scrub.value !== sv) scrub.value = sv;
+  }
+
+  scrub.addEventListener('input', e => {
+    stopPlay();
+    // Scrub maps directly to parserIdx (uniform-per-trkpt), so dragging the
+    // playhead is smooth and consistent with how it advances during play.
+    const f = +e.target.value / +e.target.max;
+    parserIdx = Math.max(0, Math.min(allPts.length - 1, Math.round(f * (allPts.length - 1))));
+    targetT = allPts[parserIdx].t;
+    setT(targetT, true);
+    timeD = 0;
+  });
+
+  // Parser now advances inside the physics tick (one trkpt per SWF frame).
+  // tickPlay just managed the parserIdx — no longer needed.
+  let playing = false;
+  function startPlay() {
+    if (playing) return;
+    playing = true;
+    playBtn.setAttribute('aria-label', 'Pause');
+    playIcon.innerHTML = ICON_PAUSE;
+    if (parserIdx >= allPts.length - 1) {
+      // restart
+      parserIdx = 0;
+      setT(t0, true);
+      timeD = 0;
+      camera.initialized = false;
+    }
+  }
+  function stopPlay() {
+    playing = false;
+    playBtn.setAttribute('aria-label', 'Play');
+    playIcon.innerHTML = ICON_PLAY;
+  }
+  playBtn.addEventListener('click', () => playing ? stopPlay() : startPlay());
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === ' ')              { e.preventDefault(); playing ? stopPlay() : startPlay(); }
+    else if (e.key === 'ArrowRight') { stopPlay(); setT(targetT + 60 * 60 * 1000); }
+    else if (e.key === 'ArrowLeft')  { stopPlay(); setT(targetT - 60 * 60 * 1000); }
+  });
+
+  setT(t0, true);
+
+  // ============================================================================
+  // URL parameters — used by the side-by-side rig (§XV) and convenient
+  // for sharing a starting point. Not part of the SWF.
+  //
+  //   ?seek=0..1   jump to a fraction of the trip; runs play-in below
+  //                so the camera spring lands mid-transient at the
+  //                rendered moment instead of cold (§X.9).
+  //   ?play=1      start playing immediately on load.
+  //   ?bg=white    force a white canvas background for headless
+  //                screen-recording fairness against the .mov, which
+  //                was recorded against a white SWF stage. The runtime
+  //                default `#f9f8f6` is what the recreation uses on
+  //                its hosted page (warm off-white, distinct from a
+  //                pure-white host).
+  // ============================================================================
+  const params = new URLSearchParams(location.search);
+  const bgOverride = params.get('bg') === 'white' ? '#ffffff' : null;
+  if (bgOverride) {
+    document.documentElement.style.background = bgOverride;
+    document.body.style.background = bgOverride;
+    document.getElementById('stage').style.background = bgOverride;
+    document.getElementById('c').style.background = bgOverride;
+  }
+  // ?nocontrols=1 hides the play bar for headless side-by-side captures
+  // so the canvas occupies the full viewport without flex-centring slack.
+  if (params.get('nocontrols') === '1') {
+    document.getElementById('controls').style.display = 'none';
+  }
+  if (params.has('seek')) {
+    const f = Math.max(0, Math.min(1, +params.get('seek')));
+
+    // Map the seek fraction to a trkpt by *time*, not by array index.
+    // Trkpts aren't evenly spaced — they cluster densely during stops
+    // and sparsely during motion (this is what the trkpt-paced playback
+    // exploits). An index-based mapping was the first version of the
+    // side-by-side rig and produced 6-hour drifts on stops; the bisect
+    // fixes it. See §XV in the archaeology for the harness's iteration
+    // history.
+    const targetTime = t0 + f * (t1 - t0);
+    let lo = 0, hi = allPts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (allPts[mid].t < targetTime) lo = mid + 1; else hi = mid;
+    }
+    const targetIdx = lo;
+
+    // Settle photo timers at (target − PLAY_IN). All photos before that
+    // moment ramp up to timer=100 so the trail of past stills reads
+    // correct. The 600-iteration outer loop is overkill (timers reach
+    // 100 after 100/1.2 ≈ 83 ticks) but it's a one-time seek operation
+    // and the headroom is harmless.
+    const PLAY_IN = 90;   // ~3 s real of pre-rolled physics
+    const settleIdx = Math.max(0, targetIdx - PLAY_IN);
+    for (let k = 0; k < 600; k++) {
+      const t = allPts[settleIdx].t;
+      for (const p of photos) {
+        if (t >= p.t && p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+      }
+    }
+
+    // From settleIdx, simulate PLAY_IN frames of real playback through
+    // the target. This re-creates a mid-motion camera spring transient
+    // — the SWF, in continuous playback, is always *mid-transient* at
+    // any moment, never settled. The original ?seek implementation ran
+    // 200 ticks of physics-to-convergence, producing artificially still
+    // frames (§X.9). The play-in fixed that for live playback. The
+    // bbox snap at the end of this block fixes a separate issue specific
+    // to *headless screenshot* comparisons (see below).
+    parserIdx = settleIdx;
+    setT(allPts[parserIdx].t, true);
+    timeD = 0;
+    camera.initialized = false;
+    camera.state = (f >= 0.999) ? 'EXTENTS' : 'CAMDRAWING';
+
+    for (let k = 0; k < PLAY_IN && parserIdx < targetIdx; k++) {
+      parserIdx += 1;
+      setT(allPts[parserIdx].t);
+      timeD += (dispT - targetT) * 4;
+      timeD *= 0.1;
+      if (isNaN(timeD)) timeD = 0;
+      dispT -= timeD;
+      const idx = lastIndexBefore(minutes, dispT);
+      cameraAnimate(camera, minutes, idx + 1, bounds, SWF_W);
+      for (const p of photos) {
+        if (targetT >= p.t) {
+          if (p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+        }
+      }
+    }
+    if (f >= 0.999) camera.state = 'EXTENTS';
+
+    // Bbox snap (§X.9, second symptom). The .mov, in continuous
+    // playback, has had minutes of physics to settle its bbox spring
+    // by any given moment. A 90-frame play-in from a cold seek-jump
+    // start can't match that — the bbox `cur` lags `dest` by ~2.5×
+    // width in the headless captures, which makes screenshot
+    // comparisons read transient state, not converged. Snap cur to
+    // dest at the end of seek's play-in so headless captures land
+    // converged. Live playback is unaffected because the snap only
+    // fires inside this `?seek=` branch.
+    camera.cur1.x = camera.dest1.x; camera.cur1.y = camera.dest1.y;
+    camera.cur2.x = camera.dest2.x; camera.cur2.y = camera.dest2.y;
+    camera.cur.x  = camera.dest.x;  camera.cur.y  = camera.dest.y;
+    camera.vel.x = camera.vel.y = 0;
+    camera.vel1.x = camera.vel1.y = 0;
+    camera.vel2.x = camera.vel2.y = 0;
+  }
+  if (params.get('play') === '1') startPlay();
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
