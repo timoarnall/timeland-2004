@@ -680,14 +680,10 @@ fidelity. Each is documented in the `index.html` comments so the next
 reader doesn't fix them.
 
 On 2026-05-09 (after the writeup first posted), two of the six were
-decided to be reverted: VII.1 (the lat/lon scale swap) and VII.2
-(the GMT+0200 timezone label). Reasons and principle in §VII.7. As
-of this writing the lat/lon revert has shipped in code; the GMT
-label revert is decided and described in the lay essay but the
-single-line edit to `fmtFlashDate` is still queued (see
-`_Documentation/todo_unfix_bugs.md`). Sections VII.1 and VII.2 below
-preserve the original analysis and add the post-decision state at
-the end of each.
+reverted: VII.1 (the lat/lon scale swap) and VII.2 (the GMT+0200
+timezone label). Reasons and principle in §VII.7. Both reverts now
+shipped in `index.html`. Sections VII.1 and VII.2 below preserve the
+original analysis and add the post-revert state at the end of each.
 
 ### VII.1 The lat/lon scale swap in display
 
@@ -742,19 +738,15 @@ function fmtFlashDate(t) {
 }
 ```
 
-**Decided 2026-05-09; revert pending in code.** The reversion
-intent: display the actual UTC time in Iceland (which is on UTC
-year-round, no DST), so anyone reading the clock to follow the trip
-sees the real local time. The previous label asserted CEST, two
-hours ahead of the trip's real local time; for the question *"when
-did we leave Höfn, when did we reach Reykjavík"* the label was
-actively misleading. The underlying time variable was always true
-UTC, so the change is a label-format change only, not a
-recomputation. The lay essay and the JSON CMS already describe the
-revert as done; `fmtFlashDate` in `index.html` still emits the
-literal `GMT+0200` suffix as of commit `6f4b647`. The single-line
-edit is queued in `_Documentation/todo_unfix_bugs.md`.
-See §VII.7 for the principle.
+**Reverted 2026-05-09.** The label now reads the actual UTC time in
+Iceland (which is on UTC year-round, no DST). The previous label
+asserted CEST, two hours ahead of the trip's real local time; for
+anyone reading the clock to follow the trip — when did we leave
+Höfn, when did we reach Reykjavík — the label was actively
+misleading. The underlying time variable was always true UTC, so
+the change is a label-format change only, not a recomputation:
+`fmtFlashDate` now emits the suffix `GMT` instead of `GMT+0200`.
+See §VII.7 for the reversion criterion.
 
 ### VII.3 The squashed projection
 
