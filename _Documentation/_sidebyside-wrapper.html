@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Timeland 2004 vs 2026 — side by side</title>
+<style>
+  html, body { margin: 0; padding: 0; background: white; height: 100%; }
+  .row { display: flex; gap: 4px; padding: 0; background: white; align-items: stretch; }
+  .col { flex: 1 1 0; display: flex; flex-direction: column; }
+  .label {
+    font: 14px/1.4 -apple-system, "SF Pro Text", system-ui, sans-serif;
+    color: #222;
+    padding: 6px 10px;
+    background: white;
+  }
+  iframe {
+    flex: 1 1 0;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 0;
+    display: block;
+    background: white;
+  }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="col">
+    <div class="label">2004 archaeology — 241 photos, 320 px source</div>
+    <iframe id="a" src="about:blank"></iframe>
+  </div>
+  <div class="col">
+    <div class="label">2026 experiment — 1,200 photos, 1024 px source</div>
+    <iframe id="b" src="about:blank"></iframe>
+  </div>
+</div>
+<script>
+  // Load both iframes at the same tick so playback advances in lockstep.
+  // The recreations are trkpt-paced and deterministic, so equal load
+  // time ≈ equal trip time across the recording.
+  const tag = "?play=1&nocontrols=1&bg=white&_=" + Date.now();
+  requestAnimationFrame(() => {
+    document.getElementById("a").src = "http://localhost:8765/index.html" + tag;
+    document.getElementById("b").src = "http://localhost:8765/experiment-2026/index.html" + tag;
+  });
+</script>
+</body>
+</html>

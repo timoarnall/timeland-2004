@@ -44,6 +44,22 @@ scale push the photo above 320 px on screen (i.e. at peak zoom).
 - 120 dropped as content duplicates (same md5 under both UTC and CEST naming)
 - **1200 kept**
 
+## Side-by-side recording
+
+`experiment-2026-sidebyside.mp4` (47 MB, 1100 × 580, ~25 fps, 205 s) and
+`experiment-2026-sidebyside.gif` (26 MB, 600 × 316, 3 fps, 205 s) are
+live screen recordings of both runtimes playing simultaneously in a
+`_sidebyside-wrapper.html` page, captured with macOS `screencapture -v`.
+The rig is the v13 "all frames" technique from the archaeology pass —
+real-time recording rather than per-frame seek-and-screenshot — applied
+to recreation-vs-recreation instead of recreation-vs-mov.
+
+Key Chrome flags to keep the renderer at full speed:
+`--disable-background-timer-throttling`,
+`--disable-renderer-backgrounding`,
+`--disable-backgrounding-occluded-windows`. Without these the iframes
+freeze at the first GPX point.
+
 ## Visual findings (4-seek smoke test)
 
 `/tmp/timeland_2026_seek_*.png` vs `/tmp/timeland_orig_seek_*.png`
