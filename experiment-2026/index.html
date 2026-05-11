@@ -428,10 +428,10 @@ PATH_OCTAGON.lineTo( 0.173, -0.173);
 PATH_OCTAGON.lineTo( 0.000, -0.230);
 PATH_OCTAGON.lineTo(-0.173, -0.173);
 
-// shape id 0003: 3-arm cross around (0.80, 0.75) — placement applies (-0.80, -0.75) so origin is at point
-const PATH_MINUTEFRONT = new Path2D();
-PATH_MINUTEFRONT.moveTo(0.80, 0.10); PATH_MINUTEFRONT.lineTo(0.80, 0.75); PATH_MINUTEFRONT.lineTo(1.60, 0.75);
-PATH_MINUTEFRONT.moveTo(0.80, 1.65); PATH_MINUTEFRONT.lineTo(0.80, 0.75); PATH_MINUTEFRONT.lineTo(0.15, 0.75);
+// shape id 0003 (3-arm cross / "minutefront") was defined in the SWF
+// but the attachMovieClip call was commented out, so it never ran.
+// The port drew it speculatively for a while; removed 2026-05-11 (see
+// drawMinutes for the reasoning).
 
 // shape id 0009: hour cross
 const PATH_HOUR = new Path2D();
@@ -522,11 +522,16 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
   // long tail and are warmed for a wider window because every active
   // photo eventually decays into one.
   function preloadNear(idxPhoto) {
+    // Widened on 2026-05-11. Dense GPS segments (Reykjavík) make the
+    // parser race through several photos per second; a narrow lookahead
+    // means fresh photos hit drawImage before .decode() has finished,
+    // forcing synchronous decode on the rAF tick. ±8 fulls covers ~2 s
+    // of even the densest stretches at 30 fps.
     const fullLo = Math.max(0, idxPhoto - 2);
-    const fullHi = Math.min(photos.length - 1, idxPhoto + 4);
+    const fullHi = Math.min(photos.length - 1, idxPhoto + 8);
     for (let i = fullLo; i <= fullHi; i++) getImg(photos[i].file);
-    const thumbLo = Math.max(0, idxPhoto - 12);
-    const thumbHi = Math.min(photos.length - 1, idxPhoto + 6);
+    const thumbLo = Math.max(0, idxPhoto - 20);
+    const thumbHi = Math.min(photos.length - 1, idxPhoto + 12);
     for (let i = thumbLo; i <= thumbHi; i++) getThumb(photos[i].file);
   }
 
@@ -583,26 +588,17 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     if (activeLen <= 0) return;
     const baseK = (camera.scale_pct / 100) * BASE_SCALE;
 
-    // Pass 1: minutefront (sprite 0005 inside minute, CXForm a=0.2) —
-    // grey 3-arm cross. Note: the SWF *defines* this sprite but the
+    // Pass 1: minutefront — REMOVED 2026-05-11. The SWF defines a
+    // 3-arm cross sprite (id 0005) inside the minute symbol, but the
     // attachMovieClip(...,"minutefront",true) call is commented out in
-    // the FLA strings dump, so the original may not have rendered it at
-    // runtime. The port draws it because it adds welcome subtle grey
-    // detail and it's harmless if absent. See §V.9 caveat in the
-    // archaeology.
-    // Pass 1 invariants: strokeStyle, alpha, and lineWidth are constant
-    // across all 2,200+ markers — set once. (Audit §D.)
-    ctx.strokeStyle = '#333333';
-    ctx.globalAlpha = 0.20;
-    ctx.lineWidth   = 1 / baseK;
-    for (let i = 0; i < activeLen; i++) {
-      const m = minutes[i];
-      const dx = m.x - 0.80, dy = m.y - 0.75;
-      ctx.translate(dx, dy);
-      ctx.stroke(PATH_MINUTEFRONT);
-      ctx.translate(-dx, -dy);
-    }
-
+    // the FLA strings dump, so the running artefact never drew it. The
+    // port added it speculatively as "welcome subtle grey detail". In
+    // practice the cross collides with the language of the *real*
+    // crosshair (current-position marker) elsewhere in the piece —
+    // putting tiny crosses through every minute octagon muddied the
+    // semantics. Reverted to faithful behaviour: only draw the
+    // octagon. Also drops ~2,200 Path2D strokes/frame at end-of-trip.
+    //
     // Pass 2: minute octagon (sprite 0008, CXForm mul a=0.5). Red, with a
     // per-marker scale that derives from elevation:
     //     ms = (max(0, ele) * 0.8 + 80) / 100
@@ -723,6 +719,22 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     // (1 / current_transform_scale) and photoScale varies. (Per perf
     // audit §C — _Documentation/experiment-2026-perf-audit.md.)
     ctx.strokeStyle = '#dddddd';
+
+    // Viewport in world coords. The canvas transform maps
+    //   (camera.xCoord - BASE_TX/k, camera.yCoord - BASE_TY/k)
+    // to the top-left of the SWF stage rect (0..SWF_W, 0..SWF_H). A
+    // photo with center (p.x, p.y) and half-extent 160 * photoScale (in
+    // design units, which are also world units here) is fully outside
+    // the viewport when its bbox doesn't intersect this rect. Skipping
+    // such photos drops per-frame work by ~80% in dense mid-trip
+    // moments (Reykjavík, where hundreds of activated photos sit far
+    // outside the current camera box). (Perf audit follow-up,
+    // 2026-05-11.)
+    const visMinX = camera.xCoord - BASE_TX / k;
+    const visMaxX = visMinX + SWF_W / k;
+    const visMinY = camera.yCoord - BASE_TY / k;
+    const visMaxY = visMinY + SWF_H / k;
+
     for (let i = 0; i < activePhotoCount; i++) {
       const p = photos[i];
       const fadeAlpha = p.timer / 100;
@@ -746,6 +758,13 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
       // box. Used for tier + cull only; doesn't touch the draw transform.
       const screenPx = 320 * photoScale * k * canvasScale;
       if (screenPx < CULL_PX) continue;
+
+      // Viewport cull: skip photos whose bounding box doesn't intersect
+      // the current camera view. Saves the per-photo transform +
+      // strokeRect + drawImage when the photo isn't on screen at all.
+      const half = 160 * photoScale;
+      if (p.x + half < visMinX || p.x - half > visMaxX ||
+          p.y + half < visMinY || p.y - half > visMaxY) continue;
 
       // Pick tier. Fall back to the other side if the chosen one hasn't
       // finished decoding yet — better an off-tier draw than a

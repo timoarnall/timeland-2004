@@ -79,6 +79,28 @@ Not applied because they would change the experience:
 - Throttling outline draws — drops the layered see-through feel.
 - Reducing source resolution — undoes the whole experiment.
 
+## Follow-up: viewport cull + minutefront removal (2026-05-11)
+
+After the §A/§C pass the choppy-burst pattern shifted: the worst spot
+was the end of the Reykjavík sequence, where the camera was zoomed in
+on the dense local cluster while ~600–800 photos from elsewhere in
+Iceland sat in the active set off-screen and were still being walked
+by `drawPhotos`. Two changes:
+
+- **Viewport cull in drawPhotos.** Compute the world-space rect that
+  the current camera transform shows, and skip photos whose bbox
+  doesn't intersect it. Saves the per-photo transform + strokeRect +
+  drawImage on photos that wouldn't contribute a visible pixel.
+  Pixel-exact (a photo whose bbox doesn't touch the stage rect draws
+  nothing anyway because of the existing `ctx.clip` to the stage).
+- **Removed the minutefront 3-arm cross.** Originally added to the port
+  speculatively (the SWF defined the sprite but its attachMovieClip
+  call was commented out). Timo noticed the cross collides with the
+  language of the real current-position crosshair in the piece —
+  removing also drops ~2,200 Path2D strokes/frame at end-of-trip.
+- **Widened preload window.** ±2/+4 fulls became ±2/+8 to cover faster
+  parser-paced burst segments without forcing on-rAF decodes.
+
 ## Measurement plan
 
 - Re-run `?fps=1` capture at seek=0.55 / 0.80 / 0.95 — confirm still at
