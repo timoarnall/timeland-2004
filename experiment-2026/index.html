@@ -826,6 +826,10 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
   let dispT = t0;
   let targetT = t0;
   let lastFrameTime = 0;          // for real-time tick accumulator
+  // ?fps=1 — running fps readout drawn top-right (perf debug)
+  let fpsCount = 0;
+  let fpsWindowStart = 0;
+  let fpsValue = 0;
   let physicsAccum = 0;           // fixed-timestep accumulator
   let lastRenderTime = 0;         // 30-fps render-rate cap
   let timeD = 0;                  // SWF TimeKeeper.timeD — 2nd-order velocity
@@ -924,6 +928,14 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     }
     lastRenderTime = now;
 
+    fpsCount++;
+    if (!fpsWindowStart) fpsWindowStart = now;
+    if (now - fpsWindowStart >= 500) {
+      fpsValue = (fpsCount * 1000) / (now - fpsWindowStart);
+      fpsCount = 0;
+      fpsWindowStart = now;
+    }
+
     // Render uses dispT for active sets (after physics ticks)
     const idxMin = lastIndexBefore(minutes, dispT);
     const idxHr  = lastIndexBefore(hours, dispT);
@@ -966,6 +978,16 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     if (allPts.length > 0) {
       const idx = Math.min(allPts.length - 1, Math.floor(parserIdx));
       drawDisplay(allPts[idx]);
+    }
+
+    if (showFPS) {
+      ctx.save();
+      ctx.fillStyle = '#000';
+      ctx.font = '14px monospace';
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'right';
+      ctx.fillText(fpsValue.toFixed(1) + ' fps', SWF_W - 14, 10);
+      ctx.restore();
     }
 
     requestAnimationFrame(frame);
@@ -1061,6 +1083,7 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
   if (params.get('nocontrols') === '1') {
     document.getElementById('controls').style.display = 'none';
   }
+  const showFPS = params.get('fps') === '1';
   if (params.has('seek')) {
     const f = Math.max(0, Math.min(1, +params.get('seek')));
 
