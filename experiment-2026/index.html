@@ -484,22 +484,46 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
   // moments, 320-wide thumbnail for back-of-trail shrinking frames. The
   // selection happens in drawPhotos based on the photo's projected
   // on-screen pixel width.
-  const imgCache = new Map();
-  const thumbCache = new Map();
+  // Two caches per tier:
+  //   - <tier>Cache holds the HTMLImageElement (the loader).
+  //   - <tier>BmpCache holds an ImageBitmap once decoded.
+  // drawImage prefers the bitmap when present: faster than drawing
+  // HTMLImageElement (no on-paint decode fallback) and immune to the
+  // browser's raster-cache eviction at high decoded-image counts. The
+  // bitmap is a 1:1 decode of the same JPEG so the output is bit-
+  // identical to drawing the <img>. Same applies to thumbs.
+  // The img.decode() call schedules an off-thread decode; we then build
+  // the bitmap from the already-decoded image, which is cheap. If
+  // decode() rejects (e.g. 404) we silently leave the bitmap unset and
+  // the draw loop falls back to the off-tier image — same fallback
+  // path as before this patch.
+  const imgCache    = new Map();
+  const imgBmpCache = new Map();
+  const thumbCache    = new Map();
+  const thumbBmpCache = new Map();
+  function warmBitmap(img, bmpCache, file) {
+    img.decode().then(() => createImageBitmap(img))
+      .then(bmp => { bmpCache.set(file, bmp); })
+      .catch(() => {});
+  }
   function getImg(file) {
     let img = imgCache.get(file);
     if (img) return img;
     img = new Image();
+    img.decoding = 'async';
     img.src = PHOTO_DIR + file;
     imgCache.set(file, img);
+    warmBitmap(img, imgBmpCache, file);
     return img;
   }
   function getThumb(file) {
     let img = thumbCache.get(file);
     if (img) return img;
     img = new Image();
+    img.decoding = 'async';
     img.src = PHOTO_THUMB_DIR + file;
     thumbCache.set(file, img);
+    warmBitmap(img, thumbBmpCache, file);
     return img;
   }
   // pre-warm next few images near current cursor. The full-res tier is
@@ -576,6 +600,8 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     // runtime. The port draws it because it adds welcome subtle grey
     // detail and it's harmless if absent. See §V.9 caveat in the
     // archaeology.
+    // Pass 1 invariants: strokeStyle, alpha, and lineWidth are constant
+    // across all 2,200+ markers — set once. (Audit §D.)
     ctx.strokeStyle = '#333333';
     ctx.globalAlpha = 0.20;
     ctx.lineWidth   = 1 / baseK;
@@ -701,6 +727,12 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     // margin around what is genuinely visible.
     const CULL_PX  = 2;
     const THUMB_PX = 400;
+    // Hoisted invariants. strokeStyle never varies across photos;
+    // the outline rect geometry is the same 320 × 212.8 every time;
+    // we set lineWidth per-photo only because it's hairline-equivalent
+    // (1 / current_transform_scale) and photoScale varies. (Per perf
+    // audit §C — _Documentation/experiment-2026-perf-audit.md.)
+    ctx.strokeStyle = '#dddddd';
     for (let i = 0; i < activePhotoCount; i++) {
       const p = photos[i];
       const fadeAlpha = p.timer / 100;
@@ -725,20 +757,36 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
       const screenPx = 320 * photoScale * k * canvasScale;
       if (screenPx < CULL_PX) continue;
 
-      // Pick tier. Fall back to the other side if the chosen one hasn't
-      // finished decoding yet — better an off-tier draw than a frame-hole.
-      let img;
+      // Pick tier. Prefer the pre-decoded ImageBitmap; fall back to the
+      // HTMLImageElement if the bitmap hasn't finished decoding yet
+      // (createImageBitmap is async). Off-tier fallback is unchanged —
+      // better an off-tier draw than a frame-hole. (Audit §A+§B.)
+      let src;
       if (screenPx < THUMB_PX) {
-        img = getThumb(p.file);
-        if (!img.complete || img.naturalWidth === 0) {
-          const full = imgCache.get(p.file);
-          if (full && full.complete && full.naturalWidth > 0) img = full;
+        src = thumbBmpCache.get(p.file);
+        if (!src) {
+          const img = getThumb(p.file);
+          if (img.complete && img.naturalWidth > 0) src = img;
+          else {
+            src = imgBmpCache.get(p.file);
+            if (!src) {
+              const full = imgCache.get(p.file);
+              if (full && full.complete && full.naturalWidth > 0) src = full;
+            }
+          }
         }
       } else {
-        img = getImg(p.file);
-        if (!img.complete || img.naturalWidth === 0) {
-          const thumb = thumbCache.get(p.file);
-          if (thumb && thumb.complete && thumb.naturalWidth > 0) img = thumb;
+        src = imgBmpCache.get(p.file);
+        if (!src) {
+          const img = getImg(p.file);
+          if (img.complete && img.naturalWidth > 0) src = img;
+          else {
+            src = thumbBmpCache.get(p.file);
+            if (!src) {
+              const thumb = thumbCache.get(p.file);
+              if (thumb && thumb.complete && thumb.naturalWidth > 0) src = thumb;
+            }
+          }
         }
       }
 
@@ -747,13 +795,12 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
 
       // Outline: 320 × 212.8 (= 240 × 0.887), #dddddd hairline
       ctx.globalAlpha = 1.0;
-      ctx.strokeStyle = '#dddddd';
       ctx.lineWidth   = 1 / (k * photoScale);
       ctx.strokeRect(-160, -106.4, 320, 212.8);
 
       ctx.globalAlpha = fadeAlpha * PHOTO_ALPHA_CAP;
-      if (img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, -160, -106.5, 320, 213);
+      if (src) {
+        ctx.drawImage(src, -160, -106.5, 320, 213);
       }
 
       const inv = 1 / photoScale;
