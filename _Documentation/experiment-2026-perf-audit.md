@@ -55,11 +55,16 @@ output, fewer stalls.
   image (full + thumb) right after setting `.src`. Decode runs async,
   the bitmap is ready before any `drawImage`. Eliminates first-paint
   stalls.
-- **B — `createImageBitmap` cache.** Decode once into a transferable
-  `ImageBitmap` and use that as the `drawImage` source. Drawing
-  `ImageBitmap` is much faster than `HTMLImageElement` (no decode
-  fallback path, GPU-friendly), and the bitmap is immune to the
-  HTMLImageElement raster-cache eviction. Pixel output identical.
+- **B — `createImageBitmap` cache. [REVERTED]** Tried decoding into
+  transferable `ImageBitmap`s; bitmaps are not evicted by the browser,
+  so 1,200 × 1024 photos × ~2.8 MB decoded each = ~3.4 GB resident, and
+  the renderer crashes (Aw, Snap! / error 11) part way through a
+  recording at the heavy end of the trip. Reverted to plain
+  `HTMLImageElement`; rely on §A's `img.decode()` pre-warm to avoid the
+  synchronous decode stall, and let the browser's raster cache manage
+  eviction. The right form of this fix would need an LRU eviction
+  policy on the bitmap cache, which is more complexity than is worth
+  it given that §A alone removes most of the burst-stall.
 - **C — Hoist invariant state out of drawPhotos.** Set strokeStyle,
   lineWidth-base, and the outline rect parameters once before the loop;
   inside the loop only adjust what actually varies (transform,

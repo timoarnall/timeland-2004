@@ -484,28 +484,18 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
   // moments, 320-wide thumbnail for back-of-trail shrinking frames. The
   // selection happens in drawPhotos based on the photo's projected
   // on-screen pixel width.
-  // Two caches per tier:
-  //   - <tier>Cache holds the HTMLImageElement (the loader).
-  //   - <tier>BmpCache holds an ImageBitmap once decoded.
-  // drawImage prefers the bitmap when present: faster than drawing
-  // HTMLImageElement (no on-paint decode fallback) and immune to the
-  // browser's raster-cache eviction at high decoded-image counts. The
-  // bitmap is a 1:1 decode of the same JPEG so the output is bit-
-  // identical to drawing the <img>. Same applies to thumbs.
-  // The img.decode() call schedules an off-thread decode; we then build
-  // the bitmap from the already-decoded image, which is cheap. If
-  // decode() rejects (e.g. 404) we silently leave the bitmap unset and
-  // the draw loop falls back to the off-tier image — same fallback
-  // path as before this patch.
-  const imgCache    = new Map();
-  const imgBmpCache = new Map();
-  const thumbCache    = new Map();
-  const thumbBmpCache = new Map();
-  function warmBitmap(img, bmpCache, file) {
-    img.decode().then(() => createImageBitmap(img))
-      .then(bmp => { bmpCache.set(file, bmp); })
-      .catch(() => {});
-  }
+  // Per-tier HTMLImageElement caches. We call img.decode() right after
+  // setting .src to schedule the JPEG decode async, off the rAF path —
+  // this eliminates the first-paint decode stall that bunched up during
+  // fast trip segments (perf audit §A). We do NOT also build
+  // ImageBitmaps: at 1,200 × 1024 photos that holds ~3 GB of decoded
+  // RGBA and crashes the renderer (Aw, Snap! / error 11). Decoded
+  // bytes for HTMLImageElement live in the browser's raster cache and
+  // are evicted under pressure; decoded ImageBitmaps stay resident
+  // until released by JS. .decode() is enough to remove the stall and
+  // leaves memory management to the browser.
+  const imgCache   = new Map();
+  const thumbCache = new Map();
   function getImg(file) {
     let img = imgCache.get(file);
     if (img) return img;
@@ -513,7 +503,7 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     img.decoding = 'async';
     img.src = PHOTO_DIR + file;
     imgCache.set(file, img);
-    warmBitmap(img, imgBmpCache, file);
+    img.decode().catch(() => {});
     return img;
   }
   function getThumb(file) {
@@ -523,7 +513,7 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     img.decoding = 'async';
     img.src = PHOTO_THUMB_DIR + file;
     thumbCache.set(file, img);
-    warmBitmap(img, thumbBmpCache, file);
+    img.decode().catch(() => {});
     return img;
   }
   // pre-warm next few images near current cursor. The full-res tier is
@@ -757,36 +747,22 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
       const screenPx = 320 * photoScale * k * canvasScale;
       if (screenPx < CULL_PX) continue;
 
-      // Pick tier. Prefer the pre-decoded ImageBitmap; fall back to the
-      // HTMLImageElement if the bitmap hasn't finished decoding yet
-      // (createImageBitmap is async). Off-tier fallback is unchanged —
-      // better an off-tier draw than a frame-hole. (Audit §A+§B.)
-      let src;
+      // Pick tier. Fall back to the other side if the chosen one hasn't
+      // finished decoding yet — better an off-tier draw than a
+      // frame-hole. (Audit §A: getImg/getThumb pre-warm via img.decode(),
+      // so most callers find the image already decoded.)
+      let img;
       if (screenPx < THUMB_PX) {
-        src = thumbBmpCache.get(p.file);
-        if (!src) {
-          const img = getThumb(p.file);
-          if (img.complete && img.naturalWidth > 0) src = img;
-          else {
-            src = imgBmpCache.get(p.file);
-            if (!src) {
-              const full = imgCache.get(p.file);
-              if (full && full.complete && full.naturalWidth > 0) src = full;
-            }
-          }
+        img = getThumb(p.file);
+        if (!img.complete || img.naturalWidth === 0) {
+          const full = imgCache.get(p.file);
+          if (full && full.complete && full.naturalWidth > 0) img = full;
         }
       } else {
-        src = imgBmpCache.get(p.file);
-        if (!src) {
-          const img = getImg(p.file);
-          if (img.complete && img.naturalWidth > 0) src = img;
-          else {
-            src = thumbBmpCache.get(p.file);
-            if (!src) {
-              const thumb = thumbCache.get(p.file);
-              if (thumb && thumb.complete && thumb.naturalWidth > 0) src = thumb;
-            }
-          }
+        img = getImg(p.file);
+        if (!img.complete || img.naturalWidth === 0) {
+          const thumb = thumbCache.get(p.file);
+          if (thumb && thumb.complete && thumb.naturalWidth > 0) img = thumb;
         }
       }
 
@@ -799,8 +775,8 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
       ctx.strokeRect(-160, -106.4, 320, 212.8);
 
       ctx.globalAlpha = fadeAlpha * PHOTO_ALPHA_CAP;
-      if (src) {
-        ctx.drawImage(src, -160, -106.5, 320, 213);
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, -160, -106.5, 320, 213);
       }
 
       const inv = 1 / photoScale;
