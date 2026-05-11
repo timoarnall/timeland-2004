@@ -166,6 +166,14 @@ const NEW_MINUTE_MS   = 30000;     // DoAction_5:39: 30 s gap = new minute
                                    // marker.
 
 const PHOTO_DIR = 'data/photos/';
+// 320-wide thumbnail tier. Same filenames as PHOTO_DIR. The renderer
+// picks the thumb when on-screen photo width is small (the 5x density
+// in this experiment means most photos in any frame are decayed-small
+// shrinking-back-of-frame stills). Pulling 1024-source through drawImage
+// 1,200×/frame at end-of-trip drove the framerate to ~1 fps on a Mac
+// mini M-class; with this tier the same moment runs at the 30 fps lock.
+// Quality unchanged: at peak (full-screen) photos still come from 1024.
+const PHOTO_THUMB_DIR = 'data/photos_320/';
 const GPX_URL   = 'data/timo_iceland_noflight.gpx';
 const XML_URL   = 'data/imageData.xml';
 
@@ -472,8 +480,12 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
 
   const camera = makeCamera(SWF_W, SWF_H);
 
-  // photo image cache
+  // photo image caches. Two tiers: full 1024-wide source for peak/near
+  // moments, 320-wide thumbnail for back-of-trail shrinking frames. The
+  // selection happens in drawPhotos based on the photo's projected
+  // on-screen pixel width.
   const imgCache = new Map();
+  const thumbCache = new Map();
   function getImg(file) {
     let img = imgCache.get(file);
     if (img) return img;
@@ -482,11 +494,26 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     imgCache.set(file, img);
     return img;
   }
-  // pre-warm next few images near current cursor
+  function getThumb(file) {
+    let img = thumbCache.get(file);
+    if (img) return img;
+    img = new Image();
+    img.src = PHOTO_THUMB_DIR + file;
+    thumbCache.set(file, img);
+    return img;
+  }
+  // pre-warm next few images near current cursor. The full-res tier is
+  // only loaded for the next handful, since most photos beyond that are
+  // either decayed to thumb-size or not yet activated. Thumbs cover the
+  // long tail and are warmed for a wider window because every active
+  // photo eventually decays into one.
   function preloadNear(idxPhoto) {
-    const lo = Math.max(0, idxPhoto - 2);
-    const hi = Math.min(photos.length - 1, idxPhoto + 4);
-    for (let i = lo; i <= hi; i++) getImg(photos[i].file);
+    const fullLo = Math.max(0, idxPhoto - 2);
+    const fullHi = Math.min(photos.length - 1, idxPhoto + 4);
+    for (let i = fullLo; i <= fullHi; i++) getImg(photos[i].file);
+    const thumbLo = Math.max(0, idxPhoto - 12);
+    const thumbHi = Math.min(photos.length - 1, idxPhoto + 6);
+    for (let i = thumbLo; i <= thumbHi; i++) getThumb(photos[i].file);
   }
 
   // ============================================================================
@@ -655,6 +682,25 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     // transparency... the translucent quality was not translucency at
     // all. It was size disparity."*
     const PHOTO_ALPHA_CAP = 1.0;
+
+    // Tier + cull thresholds, in device pixels of the photo's on-screen
+    // box (320 design-units × photoScale × k × canvasScale).
+    //
+    //   • CULL_PX: below this the photo is one or two pixels of mush;
+    //     drawImage + strokeRect are invisible work. Skip the whole row.
+    //   • THUMB_PX: below this the 320-wide source is indistinguishable
+    //     from the 1024 downsample, and >10× cheaper to rasterise. Use
+    //     thumb. Above this, use the full source so peak-bloom moments
+    //     keep their sharpness — which is the whole point of the
+    //     experiment (see _Documentation/experiment-2026.md).
+    //
+    // Both are measured at end-of-trip: with 1,200 photos active and a
+    // typical k≈1.0, decayed-trail photos render at ~22 device px on
+    // retina — below THUMB_PX. Peak-bloom photos are 600-1500 px —
+    // above THUMB_PX, full-source. CULL_PX=2 keeps a 1-device-pixel
+    // margin around what is genuinely visible.
+    const CULL_PX  = 2;
+    const THUMB_PX = 400;
     for (let i = 0; i < activePhotoCount; i++) {
       const p = photos[i];
       const fadeAlpha = p.timer / 100;
@@ -674,7 +720,28 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
       let photoScale = (3.5 + 9_000_000 / (dt + 1)) / 100;
       if (photoScale * k > MAX_FINAL_SCALE) photoScale = MAX_FINAL_SCALE / k;
 
-      const img = getImg(p.file);
+      // Projected on-screen pixel width of this photo's 320 design-unit
+      // box. Used for tier + cull only; doesn't touch the draw transform.
+      const screenPx = 320 * photoScale * k * canvasScale;
+      if (screenPx < CULL_PX) continue;
+
+      // Pick tier. Fall back to the other side if the chosen one hasn't
+      // finished decoding yet — better an off-tier draw than a frame-hole.
+      let img;
+      if (screenPx < THUMB_PX) {
+        img = getThumb(p.file);
+        if (!img.complete || img.naturalWidth === 0) {
+          const full = imgCache.get(p.file);
+          if (full && full.complete && full.naturalWidth > 0) img = full;
+        }
+      } else {
+        img = getImg(p.file);
+        if (!img.complete || img.naturalWidth === 0) {
+          const thumb = thumbCache.get(p.file);
+          if (thumb && thumb.complete && thumb.naturalWidth > 0) img = thumb;
+        }
+      }
+
       ctx.translate(p.x, p.y);
       ctx.scale(photoScale, photoScale);
 
