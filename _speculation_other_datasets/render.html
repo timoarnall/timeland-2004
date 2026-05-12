@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timeland — other datasets</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --body-bg: #ffffff;
+  --artefact-bg: #f9f8f6;
+  --fg: #000000;
+  --accent: #c40000;
+  --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --base: 11px;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --body-bg: #111; --fg: #cccac5; }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--body-bg); color: var(--fg); font: 400 var(--base)/1.4 var(--font); height: 100%; overflow: hidden; }
+body { display: flex; flex-direction: column; align-items: stretch; justify-content: center; padding: 0 16px; }
+#title { padding: 14px 4px 8px; font-size: 12px; color: var(--fg); opacity: 0.8; }
+#stage { position: relative; width: 100%; aspect-ratio: 1 / 1; background: var(--artefact-bg); border-radius: 3px; overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; background: var(--artefact-bg); border-radius: 3px; }
+#controls { width: 100%; padding: 14px 0; display: flex; align-items: center; gap: 18px; }
+#play { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%; background: rgba(128,128,128,0.20); border: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+#play:hover { background: rgba(128,128,128,0.32); }
+#play svg { width: 11px; height: 11px; fill: #8a847b; }
+#scrub { flex: 1 1 auto; -webkit-appearance: none; height: 6px; background: rgba(128,128,128,0.22); border-radius: 3px; outline: none; cursor: pointer; }
+#scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #8a847b; cursor: pointer; border: 0; }
+</style>
+</head>
+<body>
+
+<div id="title">loading…</div>
+<div id="stage"><canvas id="c" width="500" height="500"></canvas></div>
+<div id="controls">
+  <button id="play" aria-label="Play"><svg id="play-icon" viewBox="0 0 12 12"><polygon points="2,1 11,6 2,11"/></svg></button>
+  <input id="scrub" type="range" min="0" max="10000" value="0" step="1">
+</div>
+
+<script>
+"use strict";
+// ============================================================================
+// Speculation — apply the Timeland renderer to non-Iceland datasets.
+// Fork of experiment-2026/index.html. Same physics, same constants, same
+// SWF-faithful behaviour. Only the data adapter is new: reads a single
+// manifest.json {trkpts, photos} from <dataset>/manifest.json and pulls
+// thumbnails from <dataset>/thumbs/. No two-tier cache (we only built
+// 1024-wide thumbs for the speculative pass).
+// ============================================================================
+
+const SWF_W = 500, SWF_H = 500;
+const G_LAT_SCALE = -800;
+const G_LON_SCALE =  400;
+const BASE_SCALE  = 0.5;
+const BASE_TX     = 203;
+const BASE_TY     = 205;
+const SPRING_K_CAM    = 1 / 40;
+const SPRING_DAMP_CAM = 0.69;
+const SPRING_K_EXT    = 1 / 3;
+const SPRING_DAMP_EXT = 0.59;
+const SCALE_CAP       = 3800;
+const TRAIL_WINDOW    = 15;
+const NEW_MINUTE_MS   = 30000;
+const SWF_FPS = 30;
+const SWF_FRAME_MS = 1000 / SWF_FPS;
+const FADE_PER_SWF_FRAME = 1.2;
+
+const params = new URLSearchParams(location.search);
+const dataset = params.get('dataset') || 'bkk-burma-2012';
+const MANIFEST_URL = `${dataset}/manifest.js`;
+const THUMB_DIR    = `${dataset}/thumbs/`;
+
+function lastIndexBefore(arr, t, key = 't') {
+  if (arr.length === 0 || t < arr[0][key]) return -1;
+  if (t >= arr[arr.length - 1][key]) return arr.length - 1;
+  let lo = 0, hi = arr.length - 1;
+  while (lo < hi - 1) {
+    const mid = (lo + hi) >> 1;
+    if (arr[mid][key] <= t) lo = mid; else hi = mid;
+  }
+  return lo;
+}
+function nearestPoint(pts, t) {
+  if (t <= pts[0].t) return pts[0];
+  if (t >= pts[pts.length - 1].t) return pts[pts.length - 1];
+  const i = lastIndexBefore(pts, t);
+  const a = pts[i], b = pts[i + 1];
+  return (t - a.t) < (b.t - t) ? a : b;
+}
+
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const pad2 = n => String(n).padStart(2, '0');
+function fmtDate(t) {
+  const d = new Date(t);
+  return DAYS[d.getUTCDay()] + ' ' + MONTHS[d.getUTCMonth()] + ' ' + pad2(d.getUTCDate())
+       + ' ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds())
+       + ' UTC ' + d.getUTCFullYear();
+}
+
+function buildTrail(pts) {
+  const minutes = [], hours = [];
+  let lastMinT = -Infinity, lastHourH = -1;
+  for (const p of pts) {
+    if (p.t > lastMinT + NEW_MINUTE_MS) { minutes.push(p); lastMinT = p.t; }
+    const hr = Math.floor(p.t / 3600000);
+    if (hr !== lastHourH) { hours.push(p); lastHourH = hr; }
+  }
+  return { minutes, hours };
+}
+
+function makeCamera(mapW, mapH) {
+  return {
+    state: 'CAMDRAWING',
+    cur:   { x: 0, y: 0 }, dest: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    cur1:  { x: -mapW/2, y: -mapH/2 }, cur2:  { x: mapW/2, y: mapH/2 },
+    dest1: { x: -mapW/2, y: -mapH/2 }, dest2: { x: mapW/2, y: mapH/2 },
+    vel1:  { x: 0, y: 0 }, vel2:  { x: 0, y: 0 },
+    xCoord: 0, yCoord: 0,
+    scale_pct: 90,
+    initialized: false,
+  };
+}
+
+function refocus(cam, points, startIdx, endIdx) {
+  let x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+  for (let i = startIdx; i < endIdx; i++) {
+    const p = points[i];
+    if (p.x < x1 || x1 === 0) x1 = p.x;
+    if (p.y < y1 || y1 === 0) y1 = p.y;
+    if (p.x > x2 || x2 === 0) x2 = p.x;
+    if (p.y > y2 || y2 === 0) y2 = p.y;
+  }
+  cam.dest1.x = x1; cam.dest1.y = y1;
+  cam.dest2.x = x2; cam.dest2.y = y2;
+}
+
+function cameraAnimate(cam, minutes, minutesLen, bounds, mapW) {
+  if (cam.state === 'CAMDRAWING' && minutesLen > 0) {
+    if (minutesLen > TRAIL_WINDOW) {
+      refocus(cam, minutes, minutesLen - TRAIL_WINDOW, minutesLen - 1);
+    }
+    const last = minutes[minutesLen - 1];
+    cam.dest.x = last.x; cam.dest.y = last.y;
+    if (!cam.initialized) {
+      cam.cur.x = cam.dest.x; cam.cur.y = cam.dest.y;
+      cam.cur1.x = cam.dest1.x; cam.cur1.y = cam.dest1.y;
+      cam.cur2.x = cam.dest2.x; cam.cur2.y = cam.dest2.y;
+      cam.initialized = true;
+    } else {
+      cam.vel.x  += (cam.dest.x  - cam.cur.x ) * SPRING_K_CAM;
+      cam.vel.y  += (cam.dest.y  - cam.cur.y ) * SPRING_K_CAM;
+      cam.vel.x *= SPRING_DAMP_CAM; cam.vel.y *= SPRING_DAMP_CAM;
+      cam.cur.x += cam.vel.x;       cam.cur.y += cam.vel.y;
+
+      cam.vel1.x += (cam.dest1.x - cam.cur1.x) * SPRING_K_CAM;
+      cam.vel1.y += (cam.dest1.y - cam.cur1.y) * SPRING_K_CAM;
+      cam.vel2.x += (cam.dest2.x - cam.cur2.x) * SPRING_K_CAM;
+      cam.vel2.y += (cam.dest2.y - cam.cur2.y) * SPRING_K_CAM;
+      cam.vel1.x *= SPRING_DAMP_CAM; cam.vel1.y *= SPRING_DAMP_CAM;
+      cam.vel2.x *= SPRING_DAMP_CAM; cam.vel2.y *= SPRING_DAMP_CAM;
+    }
+  }
+  if (cam.state === 'EXTENTS') {
+    cam.dest1.x = bounds.minLat; cam.dest1.y = bounds.minLon;
+    cam.dest2.x = bounds.maxLat; cam.dest2.y = bounds.maxLon;
+    cam.vel1.x += (cam.dest1.x - cam.cur1.x) * SPRING_K_EXT;
+    cam.vel1.y += (cam.dest1.y - cam.cur1.y) * SPRING_K_EXT;
+    cam.vel2.x += (cam.dest2.x - cam.cur2.x) * SPRING_K_EXT;
+    cam.vel2.y += (cam.dest2.y - cam.cur2.y) * SPRING_K_EXT;
+    cam.vel1.x *= SPRING_DAMP_EXT; cam.vel1.y *= SPRING_DAMP_EXT;
+    cam.vel2.x *= SPRING_DAMP_EXT; cam.vel2.y *= SPRING_DAMP_EXT;
+  }
+  cam.cur1.x += cam.vel1.x; cam.cur1.y += cam.vel1.y;
+  cam.cur2.x += cam.vel2.x; cam.cur2.y += cam.vel2.y;
+
+  if (cam.state === 'CAMDRAWING') {
+    cam.xCoord = cam.cur.x; cam.yCoord = cam.cur.y;
+  } else {
+    cam.xCoord = (cam.cur2.x - cam.cur1.x) / 2 + cam.cur1.x;
+    cam.yCoord = (cam.cur2.y - cam.cur1.y) / 2 + cam.cur1.y;
+  }
+  const w = cam.cur2.x - cam.cur1.x;
+  let s = (cam.state === 'CAMDRAWING' ? 90 : 100) * mapW / Math.max(0.001, w);
+  if (s > SCALE_CAP) s = SCALE_CAP;
+  cam.scale_pct = s;
+}
+
+const PATH_OCTAGON = new Path2D();
+PATH_OCTAGON.moveTo(-0.173, -0.173);
+PATH_OCTAGON.lineTo(-0.230,  0.000);
+PATH_OCTAGON.lineTo(-0.173,  0.173);
+PATH_OCTAGON.lineTo( 0.000,  0.230);
+PATH_OCTAGON.lineTo( 0.173,  0.173);
+PATH_OCTAGON.lineTo( 0.230,  0.000);
+PATH_OCTAGON.lineTo( 0.173, -0.173);
+PATH_OCTAGON.lineTo( 0.000, -0.230);
+PATH_OCTAGON.lineTo(-0.173, -0.173);
+const PATH_HOUR = new Path2D();
+PATH_HOUR.moveTo( 0.05, -1.10); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo( 1.50, 0.05);
+PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(-1.40, 0.05);
+
+function loadManifestScript(url) {
+  // Use a <script> tag instead of fetch() so file:// works in Safari/Chrome.
+  // The script assigns to window.__MANIFEST. Same-origin policy doesn't
+  // apply to script tags.
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = () => {
+      if (window.__MANIFEST) resolve(window.__MANIFEST);
+      else reject(new Error('manifest script loaded but window.__MANIFEST not set'));
+    };
+    s.onerror = () => reject(new Error('failed to load ' + url));
+    document.head.appendChild(s);
+  });
+}
+
+(async function main() {
+  let manifest;
+  try {
+    manifest = await loadManifestScript(MANIFEST_URL);
+  } catch (e) {
+    document.getElementById('title').textContent = 'load failed: ' + e.message;
+    throw e;
+  }
+  document.getElementById('title').textContent = manifest.title;
+  document.title = manifest.title;
+  const accent = manifest.accent || '#c40000';
+
+  // trkpts come as [t_ms, lat, lon, ele]
+  const allPts = manifest.trkpts.map(([t, lat, lon, ele]) => ({
+    raw_lat: lat, raw_lon: lon,
+    x: lon * G_LON_SCALE,
+    y: lat * G_LAT_SCALE,
+    ele,
+    t,
+  }));
+  allPts.sort((a, b) => a.t - b.t);
+
+  const photos = manifest.photos.map(p => ({ file: p.file, t: p.t }));
+  photos.sort((a, b) => a.t - b.t);
+
+  const { minutes, hours } = buildTrail(allPts);
+
+  for (const p of photos) {
+    const g = nearestPoint(allPts, p.t);
+    p.x = g.x; p.y = g.y; p.ele = g.ele;
+    p.timer = 0;
+  }
+
+  let minLat =  Infinity, maxLat = -Infinity, minLon =  Infinity, maxLon = -Infinity;
+  for (const p of minutes) {
+    if (p.x < minLat) minLat = p.x; if (p.x > maxLat) maxLat = p.x;
+    if (p.y < minLon) minLon = p.y; if (p.y > maxLon) maxLon = p.y;
+  }
+  const bounds = { minLat, maxLat, minLon, maxLon };
+  const camera = makeCamera(SWF_W, SWF_H);
+
+  const imgCache = new Map();
+  function getImg(file) {
+    let img = imgCache.get(file);
+    if (img) return img;
+    img = new Image();
+    img.decoding = 'async';
+    img.src = THUMB_DIR + file;
+    imgCache.set(file, img);
+    img.decode().catch(() => {});
+    return img;
+  }
+  function preloadNear(idxPhoto) {
+    const lo = Math.max(0, idxPhoto - 4);
+    const hi = Math.min(photos.length - 1, idxPhoto + 12);
+    for (let i = lo; i <= hi; i++) getImg(photos[i].file);
+  }
+
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  let canvasScale = 1;
+  function syncCanvasSize() {
+    const cssW = canvas.clientWidth  || SWF_W;
+    const cssH = canvas.clientHeight || SWF_H;
+    const css  = Math.max(cssW, cssH);
+    const dpr  = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const buf  = Math.max(1, Math.round(css * dpr));
+    if (canvas.width  !== buf) canvas.width  = buf;
+    if (canvas.height !== buf) canvas.height = buf;
+    canvasScale = buf / SWF_W;
+  }
+  syncCanvasSize();
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(syncCanvasSize).observe(canvas);
+
+  function applyCanvasTransform() {
+    ctx.translate(BASE_TX, BASE_TY);
+    const k = (camera.scale_pct / 100) * BASE_SCALE;
+    ctx.scale(k, k);
+    ctx.translate(-camera.xCoord, -camera.yCoord);
+  }
+
+  function drawMinutes(minutes, activeLen) {
+    if (activeLen <= 0) return;
+    const baseK = (camera.scale_pct / 100) * BASE_SCALE;
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.50;
+    for (let i = 0; i < activeLen; i++) {
+      const m = minutes[i];
+      const ms = (Math.max(0, m.ele) * 0.8 + 80) / 100;
+      ctx.translate(m.x, m.y);
+      ctx.scale(ms, ms);
+      ctx.lineWidth = 1 / (baseK * ms);
+      ctx.stroke(PATH_OCTAGON);
+      const inv = 1 / ms;
+      ctx.scale(inv, inv);
+      ctx.translate(-m.x, -m.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawHours(hours, activeLen) {
+    if (activeLen <= 0) return;
+    const baseK = (camera.scale_pct / 100) * BASE_SCALE;
+    ctx.strokeStyle = '#743636';
+    ctx.globalAlpha = 1.0;
+    ctx.lineWidth = 1 / baseK;
+    for (let i = 0; i < activeLen; i++) {
+      const h = hours[i];
+      ctx.translate(h.x, h.y);
+      ctx.stroke(PATH_HOUR);
+      ctx.translate(-h.x, -h.y);
+    }
+  }
+
+  function drawPhotos(T, activePhotoCount) {
+    const k = (camera.scale_pct / 100) * BASE_SCALE;
+    const MAX_FINAL_SCALE = 80 * (SCALE_CAP / 2500);
+    if (activePhotoCount > 0) preloadNear(activePhotoCount - 1);
+    const PHOTO_ALPHA_CAP = 1.0;
+    const CULL_PX  = 2;
+    ctx.strokeStyle = '#dddddd';
+
+    const visMinX = camera.xCoord - BASE_TX / k;
+    const visMaxX = visMinX + SWF_W / k;
+    const visMinY = camera.yCoord - BASE_TY / k;
+    const visMaxY = visMinY + SWF_H / k;
+
+    for (let i = 0; i < activePhotoCount; i++) {
+      const p = photos[i];
+      const fadeAlpha = p.timer / 100;
+      if (fadeAlpha <= 0) continue;
+      const dt = Math.abs(T - p.t);
+      let photoScale = (3.5 + 9_000_000 / (dt + 1)) / 100;
+      if (photoScale * k > MAX_FINAL_SCALE) photoScale = MAX_FINAL_SCALE / k;
+      const screenPx = 320 * photoScale * k * canvasScale;
+      if (screenPx < CULL_PX) continue;
+      const half = 160 * photoScale;
+      if (p.x + half < visMinX || p.x - half > visMaxX ||
+          p.y + half < visMinY || p.y - half > visMaxY) continue;
+
+      const img = getImg(p.file);
+      ctx.translate(p.x, p.y);
+      ctx.scale(photoScale, photoScale);
+      ctx.globalAlpha = 1.0;
+      ctx.lineWidth   = 1 / (k * photoScale);
+      ctx.strokeRect(-160, -106.4, 320, 212.8);
+      ctx.globalAlpha = fadeAlpha * PHOTO_ALPHA_CAP;
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, -160, -106.5, 320, 213);
+      }
+      const inv = 1 / photoScale;
+      ctx.scale(inv, inv);
+      ctx.translate(-p.x, -p.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawDisplay(trkpt) {
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.font = '11px ' + (getComputedStyle(document.body).getPropertyValue('--font') || 'monospace');
+    ctx.textBaseline = 'top';
+    ctx.fillText(fmtDate(trkpt.t), 14, 10);
+    ctx.fillText(trkpt.raw_lat.toFixed(6) + (trkpt.raw_lat >= 0 ? 'N' : 'S'), 14, 25);
+    ctx.fillText(Math.abs(trkpt.raw_lon).toFixed(6) + (trkpt.raw_lon >= 0 ? 'E' : 'W'), 104, 25);
+    ctx.fillText('elevation:' + trkpt.ele.toFixed(2) + 'm', 199, 25);
+    ctx.restore();
+  }
+
+  const t0 = minutes.length > 0 ? minutes[0].t : allPts[0].t;
+  const t1 = minutes.length > 0 ? minutes[minutes.length - 1].t : allPts[allPts.length - 1].t;
+  let parserIdx = 0;
+  let dispT = t0;
+  let targetT = t0;
+  let lastFrameTime = 0;
+  let fpsCount = 0, fpsWindowStart = 0, fpsValue = 0;
+  let physicsAccum = 0;
+  let lastRenderTime = 0;
+  let timeD = 0;
+
+  function frame(now) {
+    const dt = lastFrameTime ? Math.min(100, now - lastFrameTime) : SWF_FRAME_MS;
+    lastFrameTime = now;
+    physicsAccum += dt;
+    let physicsTicks = 0;
+    while (physicsAccum >= SWF_FRAME_MS && physicsTicks < 8) {
+      physicsAccum -= SWF_FRAME_MS;
+      physicsTicks++;
+      if (playing) {
+        if (parserIdx < allPts.length - 1) {
+          parserIdx += 1;
+          setT(allPts[parserIdx].t);
+        } else { stopPlay(); }
+      }
+      timeD += (dispT - targetT) * 4;
+      timeD *= 0.1;
+      if (isNaN(timeD)) timeD = 0;
+      dispT -= timeD;
+
+      camera.state = (parserIdx >= allPts.length - 1) ? 'EXTENTS' : 'CAMDRAWING';
+      const idxMinNow = lastIndexBefore(minutes, dispT);
+      cameraAnimate(camera, minutes, idxMinNow + 1, bounds, SWF_W);
+
+      for (let i = 0; i < photos.length; i++) {
+        const p = photos[i];
+        if (targetT >= p.t) {
+          if (p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+        } else if (p.timer !== 0) {
+          p.timer = 0;
+        } else { break; }
+      }
+    }
+
+    if (now - lastRenderTime + 1 < SWF_FRAME_MS) {
+      requestAnimationFrame(frame); return;
+    }
+    lastRenderTime = now;
+
+    fpsCount++;
+    if (!fpsWindowStart) fpsWindowStart = now;
+    if (now - fpsWindowStart >= 500) {
+      fpsValue = (fpsCount * 1000) / (now - fpsWindowStart);
+      fpsCount = 0; fpsWindowStart = now;
+    }
+
+    const idxMin = lastIndexBefore(minutes, dispT);
+    const idxHr  = lastIndexBefore(hours, dispT);
+    const idxPhoto = lastIndexBefore(photos, dispT);
+    const activeMinutesLen = idxMin + 1;
+    const activeHoursLen   = idxHr + 1;
+    const activePhotoCount = idxPhoto + 1;
+
+    ctx.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
+    ctx.fillStyle = bgOverride || '#f9f8f6';
+    ctx.fillRect(0, 0, SWF_W, SWF_H);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, SWF_W, SWF_H);
+    ctx.clip();
+    applyCanvasTransform();
+    drawPhotos(dispT, activePhotoCount);
+    drawMinutes(minutes, activeMinutesLen);
+    drawHours(hours, activeHoursLen);
+    ctx.restore();
+
+    if (allPts.length > 0) {
+      const idx = Math.min(allPts.length - 1, Math.floor(parserIdx));
+      drawDisplay(allPts[idx]);
+    }
+    if (showFPS) {
+      ctx.save();
+      ctx.fillStyle = '#000'; ctx.font = '14px monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'right';
+      ctx.fillText(fpsValue.toFixed(1) + ' fps', SWF_W - 14, 10);
+      ctx.restore();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  const scrub = document.getElementById('scrub');
+  const playBtn = document.getElementById('play');
+  const playIcon = document.getElementById('play-icon');
+  const ICON_PLAY  = '<polygon points="2,1 11,6 2,11"/>';
+  const ICON_PAUSE = '<rect x="2" y="1" width="3" height="10"/><rect x="7" y="1" width="3" height="10"/>';
+
+  function setT(t, jump = false) {
+    targetT = Math.max(t0, Math.min(t1, t));
+    if (jump) dispT = targetT;
+    const sv = Math.round(parserIdx / (allPts.length - 1) * +scrub.max);
+    if (+scrub.value !== sv) scrub.value = sv;
+  }
+  scrub.addEventListener('input', e => {
+    stopPlay();
+    const f = +e.target.value / +e.target.max;
+    parserIdx = Math.max(0, Math.min(allPts.length - 1, Math.round(f * (allPts.length - 1))));
+    targetT = allPts[parserIdx].t;
+    setT(targetT, true);
+    timeD = 0;
+  });
+  let playing = false;
+  function startPlay() {
+    if (playing) return;
+    playing = true;
+    playBtn.setAttribute('aria-label', 'Pause');
+    playIcon.innerHTML = ICON_PAUSE;
+    if (parserIdx >= allPts.length - 1) {
+      parserIdx = 0; setT(t0, true); timeD = 0; camera.initialized = false;
+    }
+  }
+  function stopPlay() {
+    playing = false;
+    playBtn.setAttribute('aria-label', 'Play');
+    playIcon.innerHTML = ICON_PLAY;
+  }
+  playBtn.addEventListener('click', () => playing ? stopPlay() : startPlay());
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === ' ') { e.preventDefault(); playing ? stopPlay() : startPlay(); }
+    else if (e.key === 'ArrowRight') { stopPlay(); setT(targetT + 60 * 60 * 1000); }
+    else if (e.key === 'ArrowLeft')  { stopPlay(); setT(targetT - 60 * 60 * 1000); }
+  });
+  setT(t0, true);
+
+  const bgOverride = params.get('bg') === 'white' ? '#ffffff' : null;
+  if (bgOverride) {
+    document.body.style.background = bgOverride;
+    document.getElementById('stage').style.background = bgOverride;
+    canvas.style.background = bgOverride;
+  }
+  if (params.get('nocontrols') === '1') {
+    document.getElementById('controls').style.display = 'none';
+    document.getElementById('title').style.display = 'none';
+  }
+  const showFPS = params.get('fps') === '1';
+
+  if (params.has('seek')) {
+    const f = Math.max(0, Math.min(1, +params.get('seek')));
+    const targetTime = t0 + f * (t1 - t0);
+    let lo = 0, hi = allPts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (allPts[mid].t < targetTime) lo = mid + 1; else hi = mid;
+    }
+    const targetIdx = lo;
+    const PLAY_IN = 90;
+    const settleIdx = Math.max(0, targetIdx - PLAY_IN);
+    for (let k = 0; k < 600; k++) {
+      const t = allPts[settleIdx].t;
+      for (const p of photos) if (t >= p.t && p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+    }
+    parserIdx = settleIdx;
+    setT(allPts[parserIdx].t, true);
+    timeD = 0;
+    camera.initialized = false;
+    camera.state = (f >= 0.999) ? 'EXTENTS' : 'CAMDRAWING';
+    for (let k = 0; k < PLAY_IN && parserIdx < targetIdx; k++) {
+      parserIdx += 1; setT(allPts[parserIdx].t);
+      timeD += (dispT - targetT) * 4; timeD *= 0.1;
+      if (isNaN(timeD)) timeD = 0; dispT -= timeD;
+      const idx = lastIndexBefore(minutes, dispT);
+      cameraAnimate(camera, minutes, idx + 1, bounds, SWF_W);
+      for (const p of photos) if (targetT >= p.t && p.timer < 100) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+    }
+    if (f >= 0.999) camera.state = 'EXTENTS';
+    camera.cur1.x = camera.dest1.x; camera.cur1.y = camera.dest1.y;
+    camera.cur2.x = camera.dest2.x; camera.cur2.y = camera.dest2.y;
+    camera.cur.x  = camera.dest.x;  camera.cur.y  = camera.dest.y;
+    camera.vel.x = camera.vel.y = 0;
+    camera.vel1.x = camera.vel1.y = 0;
+    camera.vel2.x = camera.vel2.y = 0;
+  }
+  if (params.get('play') === '1') startPlay();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

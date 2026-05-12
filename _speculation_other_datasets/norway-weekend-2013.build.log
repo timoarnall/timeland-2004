@@ -1,0 +1,15 @@
+[london-weekend-2013] building
+  reading gpx...
+  3800 trkpts loaded
+  3799 after date window
+  1900 after 2× decimate
+  scanning photos...
+  461 candidate photos
+  449 photos in gpx window (0 no-exif, 12 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/london-weekend-2013/thumbs ...
+    100/449  (0 failed)
+    200/449  (0 failed)
+    300/449  (0 failed)
+    400/449  (0 failed)
+  thumbs done: 449 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/london-weekend-2013/manifest.json

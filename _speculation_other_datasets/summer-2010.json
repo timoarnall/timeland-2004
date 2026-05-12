@@ -1,0 +1,39 @@
+{
+  "name": "summer-2010",
+  "title": "Norway → Italy → Brussels → London, July–August 2010",
+  "photo_dirs": [
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-16",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-17",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-18",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-19",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-20",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-21",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-22",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-23",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-25",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-28",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-07-30",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-01",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-03",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-04",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-06",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-08",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-11",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-13",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-15",
+    "/Volumes/Groke/Photos/Photo Archive/Photo/2010/2010-08-16"
+  ],
+  "photo_glob": "*.cr2",
+  "gpx_files": [
+    "/Volumes/Groke/Projects/2003-2016 - Mapping and Cartography/GPS and Photomapping Data/GPS/Norway july 2010.gpx",
+    "/Volumes/Groke/Projects/2003-2016 - Mapping and Cartography/GPS and Photomapping Data/GPS/Italy party.gpx",
+    "/Volumes/Groke/Projects/2003-2016 - Mapping and Cartography/GPS and Photomapping Data/GPS/Brussels London.gpx",
+    "/Volumes/Groke/Projects/2003-2016 - Mapping and Cartography/GPS and Photomapping Data/GPS/London June 2010 1.gpx"
+  ],
+  "date_lo": "2010-07-16T00:00:00Z",
+  "date_hi": "2010-08-17T00:00:00Z",
+  "trkpt_decimate": 10,
+  "jpeg_quality": 70,
+  "max_w": 1024,
+  "accent": "#1a7a55"
+}

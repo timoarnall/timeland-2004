@@ -1,0 +1,19 @@
+[bkk-burma-2012] building
+  reading gpx...
+  2511 trkpts loaded
+  2511 after date window
+  scanning photos...
+  1150 candidate photos
+  936 photos in gpx window (0 no-exif, 214 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012/thumbs ...
+    100/936  (0 failed)
+    200/936  (0 failed)
+    300/936  (0 failed)
+    400/936  (0 failed)
+    500/936  (0 failed)
+    600/936  (0 failed)
+    700/936  (0 failed)
+    800/936  (0 failed)
+    900/936  (0 failed)
+  thumbs done: 936 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012/manifest.json

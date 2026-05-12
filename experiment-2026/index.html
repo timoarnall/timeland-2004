@@ -467,6 +467,48 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     p.timer = 0;
   }
 
+  // Cluster photos by position so we can occlude lower layers in
+  // dense stacks (Timo's hint: "evaluate if the photos are still
+  // visible below layers of others"). Two photos within CLUSTER_R
+  // design units of each other are assigned the same cluster id; the
+  // newest activated, fully-faded photo in a cluster is opaque at
+  // PHOTO_ALPHA_CAP=1.0 and covers the older same-cluster photos
+  // sitting beneath it (same world position, same min scale).
+  // Reykjavík hotels and viewpoints generate clusters of 20–60+ photos
+  // taken over hours, all at the same GPS pin — only the newest one
+  // contributes a visible pixel. This is what crashes mid-trip fps to
+  // 2–15: hundreds of fully-occluded draws per frame.
+  //
+  // CLUSTER_R is small (1 design unit ≈ 1 km of GPS jitter at the
+  // typical projected scale) to be conservative: only photos that are
+  // visibly at the same pin merge. Photos a few units apart still draw
+  // separately.
+  //
+  // Each photo also stores a linked-list pointer to the next photo in
+  // its cluster, so drawPhotos can walk forward at runtime to check
+  // for a newer fully-faded same-cluster photo without per-frame
+  // cluster-table allocation.
+  const CLUSTER_R = 1;
+  for (let i = 0; i < photos.length; i++) photos[i].cluster = i;
+  for (let i = 1; i < photos.length; i++) {
+    const pi = photos[i];
+    for (let j = 0; j < i; j++) {
+      const pj = photos[j];
+      if (Math.abs(pi.x - pj.x) < CLUSTER_R && Math.abs(pi.y - pj.y) < CLUSTER_R) {
+        pi.cluster = pj.cluster;
+        break;
+      }
+    }
+  }
+  {
+    const lastIdx = new Map();
+    for (let i = photos.length - 1; i >= 0; i--) {
+      const c = photos[i].cluster;
+      photos[i].nextInCluster = lastIdx.has(c) ? lastIdx.get(c) : -1;
+      lastIdx.set(c, i);
+    }
+  }
+
   // bounds for EXTENTS state — note: SWF tracks min/maxLat/Lon in projected space
   // (via updateExtents called with already-scaled lon, lat values)
   let minLat =  Infinity, maxLat = -Infinity, minLon =  Infinity, maxLon = -Infinity;
@@ -766,6 +808,25 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
       if (p.x + half < visMinX || p.x - half > visMaxX ||
           p.y + half < visMinY || p.y - half > visMaxY) continue;
 
+      // Occlusion cull (cluster-stack). Walk forward through
+      // photos in the same cluster; if any newer one is fully faded
+      // (timer >= 100 → alpha 1.0 → opaque drawImage), it sits on top
+      // of this photo at the same world position with at least the
+      // same size and covers it. The walk terminates at the first
+      // such photo or runs off the chain. For a Reykjavík cluster of
+      // 40 photos this skips 39 of them per frame at end-of-trip.
+      //
+      // The check uses < activePhotoCount so we don't reach into the
+      // future — once the parser hasn't activated photo j yet, it's
+      // not on screen and can't occlude photo i.
+      let occluded = false;
+      let j = p.nextInCluster;
+      while (j !== -1 && j < activePhotoCount) {
+        if (photos[j].timer >= 100) { occluded = true; break; }
+        j = photos[j].nextInCluster;
+      }
+      if (occluded) continue;
+
       // Pick tier. Fall back to the other side if the chosen one hasn't
       // finished decoding yet — better an off-tier draw than a
       // frame-hole. (Audit §A: getImg/getThumb pre-warm via img.decode(),
@@ -872,6 +933,9 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
   let fpsCount = 0;
   let fpsWindowStart = 0;
   let fpsValue = 0;
+  // ?testdump=1 — monotonic render counter so the harness can compute
+  // FPS = Δcount / Δtime without colliding with the overlay's reset.
+  let renderCount = 0;
   let physicsAccum = 0;           // fixed-timestep accumulator
   let lastRenderTime = 0;         // 30-fps render-rate cap
   let timeD = 0;                  // SWF TimeKeeper.timeD — 2nd-order velocity
@@ -971,6 +1035,7 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     lastRenderTime = now;
 
     fpsCount++;
+    renderCount++;
     if (!fpsWindowStart) fpsWindowStart = now;
     if (now - fpsWindowStart >= 500) {
       fpsValue = (fpsCount * 1000) / (now - fpsWindowStart);
@@ -1126,6 +1191,33 @@ PATH_HOUR.moveTo( 0.05,  1.40); PATH_HOUR.lineTo(0.05,  0.05); PATH_HOUR.lineTo(
     document.getElementById('controls').style.display = 'none';
   }
   const showFPS = params.get('fps') === '1';
+
+  // ?testdump=1 — automated FPS harness. After a settle window the
+  // page writes a moving-average FPS into document.title; the driver
+  // script reads the title via AppleScript and kills the window.
+  // Format: "FPS=<value>". Settle defaults to 2 s, sample 4 s; tune
+  // with ?settle=<ms>&sample=<ms>. (See _Documentation/perf_fps_suite.md.)
+  if (params.get('testdump') === '1') {
+    const settle = +params.get('settle') || 2000;
+    const sample = +params.get('sample') || 4000;
+    let baseline = 0;
+    let windowStart = 0;
+    let stopped = false;
+    function harnessTick(t) {
+      if (stopped) return;
+      if (!windowStart) { windowStart = t; baseline = renderCount; }
+      const elapsed = t - windowStart;
+      if (elapsed < sample) {
+        requestAnimationFrame(harnessTick);
+        return;
+      }
+      const frames = renderCount - baseline;
+      const fps = frames * 1000 / elapsed;
+      document.title = 'FPS=' + fps.toFixed(2);
+      stopped = true;
+    }
+    setTimeout(() => requestAnimationFrame(harnessTick), settle);
+  }
   if (params.has('seek')) {
     const f = Math.max(0, Math.min(1, +params.get('seek')));
 

@@ -1,0 +1,19 @@
+[summer-2010] building
+  reading gpx...
+  50044 trkpts loaded
+  50044 after date window
+  5005 after 10× decimate
+  scanning photos...
+  866 candidate photos
+  866 photos in gpx window (0 no-exif, 0 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010/thumbs ...
+    100/866  (0 failed)
+    200/866  (0 failed)
+    300/866  (0 failed)
+    400/866  (0 failed)
+    500/866  (0 failed)
+    600/866  (0 failed)
+    700/866  (0 failed)
+    800/866  (0 failed)
+  thumbs done: 866 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010/manifest.json
