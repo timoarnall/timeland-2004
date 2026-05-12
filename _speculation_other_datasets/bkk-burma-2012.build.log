@@ -2,18 +2,66 @@
   reading gpx...
   2511 trkpts loaded
   2511 after date window
+  4 ground-only segments after split (jump>100.0km & >30.0min; min 4.0h)
+    seg1: 2012-04-18T23:55:55+00:00 → 2012-04-20T22:09:07+00:00  (639 pts, 46.2h)
+    seg2: 2012-04-21T02:13:57+00:00 → 2012-04-21T22:34:48+00:00  (735 pts, 20.3h)
+    seg3: 2012-04-22T00:53:05+00:00 → 2012-04-23T12:02:27+00:00  (650 pts, 35.2h)
+    seg4: 2012-04-24T04:31:25+00:00 → 2012-04-26T04:08:41+00:00  (241 pts, 47.6h)
+  → spawning sub-build: _bkk-burma-2012__seg1.json
+[bkk-burma-2012__seg1] building
+  reading gpx...
+  2511 trkpts loaded
+  639 after date window
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2012-04-18T23:55:55+00:00 → 2012-04-20T22:09:07+00:00  (639 pts, 46.2h)
   scanning photos...
   1150 candidate photos
-  936 photos in gpx window (0 no-exif, 214 out-of-window)
-  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012/thumbs ...
-    100/936  (0 failed)
-    200/936  (0 failed)
-    300/936  (0 failed)
-    400/936  (0 failed)
-    500/936  (0 failed)
-    600/936  (0 failed)
-    700/936  (0 failed)
-    800/936  (0 failed)
-    900/936  (0 failed)
-  thumbs done: 936 written, 0 failed
-  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012/manifest.json
+  122 photos in gpx window (0 no-exif, 1028 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg1/thumbs ...
+    100/122  (0 failed)
+  thumbs done: 122 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg1/manifest.json
+  → spawning sub-build: _bkk-burma-2012__seg2.json
+[bkk-burma-2012__seg2] building
+  reading gpx...
+  2511 trkpts loaded
+  735 after date window
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2012-04-21T02:13:57+00:00 → 2012-04-21T22:34:48+00:00  (735 pts, 20.3h)
+  scanning photos...
+  1150 candidate photos
+  290 photos in gpx window (0 no-exif, 860 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg2/thumbs ...
+    100/290  (0 failed)
+    200/290  (0 failed)
+  thumbs done: 290 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg2/manifest.json
+  → spawning sub-build: _bkk-burma-2012__seg3.json
+[bkk-burma-2012__seg3] building
+  reading gpx...
+  2511 trkpts loaded
+  650 after date window
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2012-04-22T00:53:05+00:00 → 2012-04-23T12:02:27+00:00  (650 pts, 35.2h)
+  scanning photos...
+  1150 candidate photos
+  233 photos in gpx window (0 no-exif, 917 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg3/thumbs ...
+    100/233  (0 failed)
+    200/233  (0 failed)
+  thumbs done: 233 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg3/manifest.json
+  → spawning sub-build: _bkk-burma-2012__seg4.json
+[bkk-burma-2012__seg4] building
+  reading gpx...
+  2511 trkpts loaded
+  241 after date window
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2012-04-24T04:31:25+00:00 → 2012-04-26T04:08:41+00:00  (241 pts, 47.6h)
+  scanning photos...
+  1150 candidate photos
+  140 photos in gpx window (0 no-exif, 1010 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg4/thumbs ...
+    100/140  (0 failed)
+  thumbs done: 140 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/bkk-burma-2012__seg4/manifest.json

@@ -3,17 +3,101 @@
   50044 trkpts loaded
   50044 after date window
   5005 after 10× decimate
+  6 ground-only segments after split (jump>100.0km & >30.0min; min 4.0h)
+    seg1: 2010-07-16T13:12:00+00:00 → 2010-07-21T10:31:13+00:00  (1084 pts, 117.3h)
+    seg2: 2010-07-21T13:49:19+00:00 → 2010-07-24T02:42:46+00:00  (323 pts, 60.9h)
+    seg3: 2010-07-24T06:58:59+00:00 → 2010-08-03T17:58:25+00:00  (1768 pts, 251.0h)
+    seg4: 2010-08-03T22:00:30+00:00 → 2010-08-04T18:10:19+00:00  (217 pts, 20.2h)
+    seg5: 2010-08-05T10:15:07+00:00 → 2010-08-09T15:40:36+00:00  (930 pts, 101.4h)
+    seg6: 2010-08-10T20:09:01+00:00 → 2010-08-16T12:27:20+00:00  (551 pts, 136.3h)
+  → spawning sub-build: _summer-2010__seg1.json
+[summer-2010__seg1] building
+  reading gpx...
+  50044 trkpts loaded
+  10833 after date window
+  1084 after 10× decimate
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2010-07-16T13:11:57+00:00 → 2010-07-21T10:31:09+00:00  (1084 pts, 117.3h)
   scanning photos...
   866 candidate photos
-  866 photos in gpx window (0 no-exif, 0 out-of-window)
-  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010/thumbs ...
-    100/866  (0 failed)
-    200/866  (0 failed)
-    300/866  (0 failed)
-    400/866  (0 failed)
-    500/866  (0 failed)
-    600/866  (0 failed)
-    700/866  (0 failed)
-    800/866  (0 failed)
-  thumbs done: 866 written, 0 failed
-  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010/manifest.json
+  548 photos in gpx window (0 no-exif, 318 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg1/thumbs ...
+    100/548  (0 failed)
+    200/548  (0 failed)
+    300/548  (0 failed)
+    400/548  (0 failed)
+    500/548  (0 failed)
+  thumbs done: 548 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg1/manifest.json
+  → spawning sub-build: _summer-2010__seg2.json
+[summer-2010__seg2] building
+  reading gpx...
+  50044 trkpts loaded
+  3227 after date window
+  323 after 10× decimate
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2010-07-21T13:49:05+00:00 → 2010-07-24T02:42:37+00:00  (323 pts, 60.9h)
+  scanning photos...
+  866 candidate photos
+  14 photos in gpx window (0 no-exif, 852 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg2/thumbs ...
+  thumbs done: 14 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg2/manifest.json
+  → spawning sub-build: _summer-2010__seg3.json
+[summer-2010__seg3] building
+  reading gpx...
+  50044 trkpts loaded
+  17674 after date window
+  1768 after 10× decimate
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2010-07-24T06:58:55+00:00 → 2010-08-03T17:58:10+00:00  (1768 pts, 251.0h)
+  scanning photos...
+  866 candidate photos
+  250 photos in gpx window (0 no-exif, 616 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg3/thumbs ...
+    100/250  (0 failed)
+    200/250  (0 failed)
+  thumbs done: 250 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg3/manifest.json
+  → spawning sub-build: _summer-2010__seg4.json
+[summer-2010__seg4] building
+  reading gpx...
+  50044 trkpts loaded
+  2171 after date window
+  218 after 10× decimate
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2010-08-03T22:00:09+00:00 → 2010-08-04T18:10:48+00:00  (218 pts, 20.2h)
+  scanning photos...
+  866 candidate photos
+  2 photos in gpx window (0 no-exif, 864 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg4/thumbs ...
+  thumbs done: 2 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg4/manifest.json
+  → spawning sub-build: _summer-2010__seg5.json
+[summer-2010__seg5] building
+  reading gpx...
+  50044 trkpts loaded
+  9300 after date window
+  930 after 10× decimate
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2010-08-05T10:14:50+00:00 → 2010-08-09T15:38:37+00:00  (930 pts, 101.4h)
+  scanning photos...
+  866 candidate photos
+  8 photos in gpx window (0 no-exif, 858 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg5/thumbs ...
+  thumbs done: 8 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg5/manifest.json
+  → spawning sub-build: _summer-2010__seg6.json
+[summer-2010__seg6] building
+  reading gpx...
+  50044 trkpts loaded
+  5510 after date window
+  551 after 10× decimate
+  1 ground-only segments after split (jump>1000000000.0km & >30.0min; min 0.0h)
+    seg1: 2010-08-10T20:08:05+00:00 → 2010-08-16T12:26:48+00:00  (551 pts, 136.3h)
+  scanning photos...
+  866 candidate photos
+  25 photos in gpx window (0 no-exif, 841 out-of-window)
+  extracting thumbs to /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg6/thumbs ...
+  thumbs done: 25 written, 0 failed
+  wrote /Volumes/Groke/Projects/2004 - Timeland/_speculation_other_datasets/summer-2010__seg6/manifest.json
