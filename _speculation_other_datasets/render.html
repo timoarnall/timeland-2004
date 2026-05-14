@@ -305,9 +305,13 @@ function loadManifestScript(url) {
     const baseK = (camera.scale_pct / 100) * BASE_SCALE;
     ctx.strokeStyle = accent;
     ctx.globalAlpha = 0.50;
+    // SWF marker-size formula: (max(0, ele) * 0.8 + 80) / 100. Tuned for
+    // Iceland's 0-500m range. Capped at 1.6× for high-altitude datasets
+    // (Norway peaks at 2200m would otherwise hit 18× and overwhelm the canvas).
+    const MARKER_SCALE_CAP = 1.6;
     for (let i = 0; i < activeLen; i++) {
       const m = minutes[i];
-      const ms = (Math.max(0, m.ele) * 0.8 + 80) / 100;
+      const ms = Math.min(MARKER_SCALE_CAP, (Math.max(0, m.ele) * 0.8 + 80) / 100);
       ctx.translate(m.x, m.y);
       ctx.scale(ms, ms);
       ctx.lineWidth = 1 / (baseK * ms);
