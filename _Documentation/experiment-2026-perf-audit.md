@@ -106,3 +106,27 @@ by `drawPhotos`. Two changes:
 - Re-run `?fps=1` capture at seek=0.55 / 0.80 / 0.95 — confirm still at
   cap.
 - Side-by-side playback by eye — confirm bursts smoothed.
+
+## Closing: occlusion-stack cull (2026-05-12)
+
+The viewport cull cleared the off-screen waste but three seeks still sat
+below the render cap (0.25, 0.45, 0.50). All three are inside the
+Reykjavík and Geysir clusters where multiple photos share an effectively
+identical world position. The old loop drew every active photo in the
+cluster even though only the newest one was opaque on screen.
+
+The cull treats each cluster as a stack. A one-time prepass walks the
+sorted photo list and, for each photo, records the next-in-cluster
+(within `CLUSTER_R = 1` design unit, newer in time) as a linked-list
+pointer. At draw time, if that next-in-cluster is also active and its
+`timer >= 100` (fully opaque), the older photo is skipped. Outline and
+image both go — nothing the older photo would have drawn was reaching
+the screen anyway.
+
+Result: 0.25 → 29.88, 0.45 → 29.13, 0.50 → 29.75. All three sit at the
+render cap. Side-by-side recording was refreshed to match.
+
+This closes the perf chapter. The bursts that remain at end-of-trip are
+parser-paced decode work on first paint, which the ±2/+8 preload window
+already covers. No further perf work is needed for the 1200-photo
+experiment to play as designed.
