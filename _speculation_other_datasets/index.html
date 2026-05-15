@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Timeland — other datasets</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #6e6963;
+  --rule: rgba(0,0,0,0.08);
+  --accent: #c40000;
+  --font: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111; --fg: #e6e3df; --muted: #8a847b; --rule: rgba(255,255,255,0.10); }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--fg); font: 400 13px/1.5 var(--font); }
+body { max-width: 880px; margin: 0 auto; padding: 32px 24px 64px; }
+h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+p.lede { color: var(--muted); margin-bottom: 28px; max-width: 56ch; }
+section.trip { border-top: 1px solid var(--rule); padding: 20px 0 6px; display: grid; grid-template-columns: 220px 1fr; gap: 22px; }
+section.trip > .preview { width: 220px; height: 220px; background: rgba(128,128,128,0.10); border-radius: 4px; overflow: hidden; }
+section.trip > .preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+section.trip > .body h2 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+section.trip > .body .meta { color: var(--muted); margin-bottom: 12px; }
+ul.segs { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+ul.segs li a { color: var(--fg); text-decoration: none; display: inline-block; padding: 2px 0; }
+ul.segs li a:hover { color: var(--accent); }
+ul.segs li .seg-meta { color: var(--muted); margin-left: 8px; }
+@media (max-width: 640px) {
+  section.trip { grid-template-columns: 1fr; }
+  section.trip > .preview { width: 100%; height: 220px; }
+}
+</style>
+</head>
+<body>
+
+<h1>Other datasets</h1>
+<p class="lede">Three trips run through the Timeland renderer. Each opens in <code>render.html?dataset=&lt;slug&gt;</code>. Defaults to Iceland's 1:2 lon:lat projection; append <code>&amp;latfit=1</code> on the <code>overnight/2026-05-14-projection-latitude-aware</code> branch to widen by mean latitude.</p>
+
+<section class="trip">
+  <div class="preview"><img src="_screenshots/bkk_seek_030.png" alt="Bangkok dataset preview"></div>
+  <div class="body">
+    <h2>Bangkok → Burma, April 2012</h2>
+    <div class="meta">785 photos · 2,265 trkpts · 4 segments</div>
+    <ul class="segs">
+      <li><a href="render.html?dataset=bkk-burma-2012__seg1">seg1 — 18–20 April</a><span class="seg-meta">122 photos · 639 trkpts</span></li>
+      <li><a href="render.html?dataset=bkk-burma-2012__seg2">seg2 — 21 April</a><span class="seg-meta">290 photos · 735 trkpts</span></li>
+      <li><a href="render.html?dataset=bkk-burma-2012__seg3">seg3 — 22–23 April</a><span class="seg-meta">233 photos · 650 trkpts</span></li>
+      <li><a href="render.html?dataset=bkk-burma-2012__seg4">seg4 — 24–26 April</a><span class="seg-meta">140 photos · 241 trkpts</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="trip">
+  <div class="preview"><img src="_screenshots/summer_seek_050.png" alt="Summer 2010 dataset preview"></div>
+  <div class="body">
+    <h2>Norway → Italy → Brussels → London, July–August 2010</h2>
+    <div class="meta">847 photos · 4,874 trkpts · 6 segments</div>
+    <ul class="segs">
+      <li><a href="render.html?dataset=summer-2010__seg1">seg1 — 16–21 July</a><span class="seg-meta">548 photos · 1,084 trkpts</span></li>
+      <li><a href="render.html?dataset=summer-2010__seg2">seg2 — 21–24 July</a><span class="seg-meta">14 photos · 323 trkpts</span></li>
+      <li><a href="render.html?dataset=summer-2010__seg3">seg3 — 24 July – 3 August</a><span class="seg-meta">250 photos · 1,768 trkpts</span></li>
+      <li><a href="render.html?dataset=summer-2010__seg4">seg4 — 3–4 August</a><span class="seg-meta">2 photos · 218 trkpts</span></li>
+      <li><a href="render.html?dataset=summer-2010__seg5">seg5 — 5–9 August</a><span class="seg-meta">8 photos · 930 trkpts</span></li>
+      <li><a href="render.html?dataset=summer-2010__seg6">seg6 — 10–16 August</a><span class="seg-meta">25 photos · 551 trkpts</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="trip">
+  <div class="preview"><img src="_screenshots/norway_seek_055.png" alt="Norway weekend preview"></div>
+  <div class="body">
+    <h2>Norway weekend (Oppdal), 5–7 July 2013</h2>
+    <div class="meta">449 photos · 1,900 trkpts · single segment</div>
+    <ul class="segs">
+      <li><a href="render.html?dataset=norway-weekend-2013">play</a><span class="seg-meta">449 photos · 1,900 trkpts</span></li>
+    </ul>
+  </div>
+</section>
+
+</body>
+</html>
