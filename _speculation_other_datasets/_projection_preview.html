@@ -1,0 +1,153 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Projection preview — latfit on / off</title>
+<style>
+  :root { --bg:#0a0a0a; --fg:#e6e6e6; --dim:#777; --line:#c40000; --accent:#3a8bff; }
+  html,body { margin:0; padding:0; background:var(--bg); color:var(--fg);
+    font:14px/1.4 -apple-system, "SF Pro", sans-serif; }
+  header { padding:16px 20px; display:flex; gap:16px; align-items:baseline; }
+  h1 { font-size:18px; font-weight:600; margin:0; }
+  .hint { color:var(--dim); }
+  label.toggle { cursor:pointer; user-select:none; }
+  input[type=checkbox] { vertical-align:-2px; margin-right:6px; }
+  .grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; padding:0 20px 24px; }
+  figure { margin:0; }
+  figure h2 { font-size:14px; font-weight:600; margin:0 0 6px; }
+  figure .meta { color:var(--dim); font-size:12px; margin:0 0 6px; }
+  canvas { width:100%; height:auto; background:#0f0f0f; border:1px solid #1c1c1c; display:block; }
+  .legend { padding:0 20px 24px; color:var(--dim); font-size:13px; max-width:780px; }
+  .legend code { background:#1a1a1a; padding:1px 6px; border-radius:3px; color:#ddd; }
+</style>
+
+<header>
+  <h1>Projection preview</h1>
+  <label class="toggle"><input id="latfit" type="checkbox"> latfit (cos(centerLat) / cos(64.5°))</label>
+  <span class="hint">Same routes, two projections. Toggle to compare.</span>
+</header>
+
+<div class="grid" id="grid"></div>
+
+<p class="legend">
+  Each thumbnail plots only the GPS route, no photos, no playback. The dataset's
+  bbox is fitted to the canvas so shape (not size) is what differs.
+  With latfit off, every dataset is rendered in the Iceland-tuned 1:2 lon:lat
+  ratio. With latfit on, longitude is rescaled by <code>cos(centerLat)/cos(64.5°)</code>
+  so each dataset reads at its real geographic proportions.
+  Iceland's <code>cos(64.5°)/cos(64.5°) = 1</code>, so the main piece is unchanged
+  either way. Numbers in the meta line show the multiplier and the resulting
+  width:height of the bbox.
+</p>
+
+<script>
+const G_LON_SCALE = 400;
+const G_LAT_SCALE = -800;
+const ICELAND_REF_LAT_RAD = 64.5 * Math.PI / 180;
+
+const DATASETS = [
+  { slug: "bkk-burma-2012__seg1", label: "Bangkok → Burma 2012 (seg 1)" },
+  { slug: "bkk-burma-2012__seg2", label: "Bangkok → Burma 2012 (seg 2)" },
+  { slug: "summer-2010__seg1",   label: "Summer 2010 — Norway → Italy (seg 1)" },
+  { slug: "summer-2010__seg3",   label: "Summer 2010 — Italy stretch (seg 3)" },
+  { slug: "norway-weekend-2013", label: "Norway weekend 2013 — Oppdal" },
+];
+
+const grid = document.getElementById("grid");
+const toggle = document.getElementById("latfit");
+if (new URLSearchParams(location.search).get("latfit") === "1") toggle.checked = true;
+
+function loadManifestScript(slug) {
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = `${slug}/manifest.js`;
+    s.onload = () => { res(window.__MANIFEST); window.__MANIFEST = null; };
+    s.onerror = () => rej(new Error("load failed: " + slug));
+    document.head.appendChild(s);
+  });
+}
+
+function prepare(manifest) {
+  let centerLat = 0;
+  for (const [, lat] of manifest.trkpts) centerLat += lat;
+  centerLat /= manifest.trkpts.length || 1;
+  const multiplier = Math.cos(centerLat * Math.PI / 180) / Math.cos(ICELAND_REF_LAT_RAD);
+  return { manifest, centerLat, multiplier };
+}
+
+function project(trkpts, latfit, multiplier) {
+  const lonScale = latfit ? G_LON_SCALE * multiplier : G_LON_SCALE;
+  const pts = trkpts.map(([, lat, lon]) => ({ x: lon * lonScale, y: lat * G_LAT_SCALE }));
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for (const p of pts) {
+    if (p.x<minX) minX=p.x; if (p.x>maxX) maxX=p.x;
+    if (p.y<minY) minY=p.y; if (p.y>maxY) maxY=p.y;
+  }
+  return { pts, minX, maxX, minY, maxY };
+}
+
+function draw(canvas, prepared, latfit) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth, cssH = canvas.clientHeight;
+  canvas.width = cssW * dpr; canvas.height = cssH * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const proj = project(prepared.manifest.trkpts, latfit, prepared.multiplier);
+  const w = proj.maxX - proj.minX, h = proj.maxY - proj.minY;
+  const pad = 10;
+  const scale = Math.min((cssW - pad*2) / (w || 1), (cssH - pad*2) / (h || 1));
+  const ox = (cssW - w * scale) / 2 - proj.minX * scale;
+  const oy = (cssH - h * scale) / 2 - proj.minY * scale;
+
+  ctx.strokeStyle = prepared.manifest.accent || "#c40000";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  let first = true;
+  for (const p of proj.pts) {
+    const x = p.x * scale + ox, y = p.y * scale + oy;
+    if (first) { ctx.moveTo(x, y); first = false; } else { ctx.lineTo(x, y); }
+  }
+  ctx.stroke();
+
+  return { w, h };
+}
+
+function fmtRatio(w, h) {
+  const r = w / h;
+  return r >= 1 ? `${r.toFixed(2)} : 1` : `1 : ${(1/r).toFixed(2)}`;
+}
+
+async function init() {
+  const prepared = [];
+  for (const d of DATASETS) {
+    const fig = document.createElement("figure");
+    fig.innerHTML = `
+      <h2>${d.label}</h2>
+      <p class="meta" data-slot="meta">loading…</p>
+      <canvas width="380" height="260" style="aspect-ratio:380/260"></canvas>`;
+    grid.appendChild(fig);
+    try {
+      const m = await loadManifestScript(d.slug);
+      const p = prepare(m);
+      prepared.push({ ...d, prepared: p, fig });
+    } catch (e) {
+      fig.querySelector('[data-slot=meta]').textContent = `load failed (${e.message})`;
+    }
+  }
+  function redraw() {
+    const latfit = toggle.checked;
+    for (const item of prepared) {
+      const canvas = item.fig.querySelector("canvas");
+      const { w, h } = draw(canvas, item.prepared, latfit);
+      const meta = item.fig.querySelector('[data-slot=meta]');
+      const mult = latfit ? item.prepared.multiplier : 1;
+      meta.textContent = `centerLat ${item.prepared.centerLat.toFixed(2)}°  ·  multiplier ${mult.toFixed(2)}×  ·  bbox ${fmtRatio(w, h)}`;
+    }
+  }
+  toggle.addEventListener("change", redraw);
+  window.addEventListener("resize", redraw);
+  redraw();
+}
+
+init();
+</script>
