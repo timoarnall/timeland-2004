@@ -101,8 +101,39 @@ by `drawPhotos`. Two changes:
 - **Widened preload window.** ±2/+4 fulls became ±2/+8 to cover faster
   parser-paced burst segments without forcing on-rAF decodes.
 
+## Follow-up: occlusion-stack cull (2026-05-12) — closing chapter
+
+The viewport pass left three seeks measurably below the 30 fps render
+cap: `seek=0.25` (Reykjavík hotels, ~15 fps), `seek=0.45` (Geysir,
+~2 fps), `seek=0.50` (Skaftafell, ~5 fps). Diagnosed via the
+`?testdump=1` harness + `/tmp/timeland_fps_suite.sh` sweep. In each of
+these, hundreds of photos sit at nearly-identical GPS coordinates
+(camp / hotel / geyser sequences shot from the same spot over minutes),
+and the topmost opaque one fully covers every older photo at the same
+position. `drawPhotos` was still walking, transforming, and drawing
+every one of them.
+
+Fix: pre-compute clusters at load with `CLUSTER_R=1` design unit; give
+each photo a `nextInCluster` linked-list pointer. In `drawPhotos`, walk
+the pointer from the current photo; if any later same-cluster photo has
+`timer >= 100` (fully opaque), skip the draw. Pixel-exact — the skipped
+photos would have been overpainted anyway.
+
+Result: `seek=0.25 → 29.88`, `seek=0.45 → 29.13`, `seek=0.50 → 29.75`.
+Full 26-point sweep between 29.06 and 30.00 fps. This is at the render
+cap — `SWF_FRAME_MS = 33.33` is a ceiling by design, the ~29.x figures
+are 60Hz vsync slop, not a residual bottleneck.
+
+Perf work on the 1200-photo experiment is closed. Any future session
+that sees an FPS regression should suspect content changes (denser
+clusters, more active photos) or new draw work, not a missing
+optimisation in this pipeline.
+
 ## Measurement plan
 
 - Re-run `?fps=1` capture at seek=0.55 / 0.80 / 0.95 — confirm still at
   cap.
+- For sub-cap suspicion, re-run `/tmp/timeland_fps_suite.sh` (26-point
+  sweep, page-side `?testdump=1` harness writes FPS to `document.title`,
+  driver reads via osascript).
 - Side-by-side playback by eye — confirm bursts smoothed.
