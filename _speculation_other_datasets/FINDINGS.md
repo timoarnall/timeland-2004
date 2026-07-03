@@ -10,15 +10,21 @@ Pipeline built and verified on three datasets. The Timeland renderer transfers c
 - One folder per dataset (`bkk-burma-2012/`, `summer-2010/`, `norway-weekend-2013/`).
 - `_screenshots/` — headless captures at five seek points per dataset.
 
-## Datasets built
+## Datasets built (after flight-splitter and elevation lookup)
 
-| Dataset | Trkpts | Photos | Thumb size | Notes |
-|---|---|---|---|---|
-| BKK-Burma 2012 | 2,511 | 936 | 133 MB | Garmin eTrex, 10-day trip. Strongest direct match to Iceland data shape. |
-| Summer 2010 | 5,005 (50,044 → 10× decimate) | 866 | 90 MB | 4 stitched GPX files. Norway → Italy → Brussels → London continental arc. |
-| Norway weekend 2013 | 1,900 (3,800 → 2× decimate) | 449 | 47 MB | Moves storyline GPX, 3-day weekend at Oppdal. Originally mis-labelled "London". |
+The initial three "combined" builds were split at flight boundaries (>100km/>30min gap = flight — kept ground-only). BKK-Burma became 4 segments (Bangkok, Yangon, Bagan, Mandalay). Summer 2010 became 6 (2 with meaningful photo counts). Norway weekend is a single clean segment. See `HANDOVER.md` for the full table.
 
-**Total: ~270 MB across three datasets, 2,251 photos.** Nothing in `/Volumes/Groke/Photos/` was touched.
+Strongest per source:
+
+| `?dataset=` | Trkpts | Photos | Notes |
+|---|---|---|---|
+| `bkk-burma-2012__seg2` | 735 | 290 | Yangon Apr 21 — densest single day |
+| `summer-2010__seg1` | 1,084 | 548 | Norway 5-day leg |
+| `norway-weekend-2013` | 1,900 | 449 | Oppdal, with Kartverket DTM1 elevation |
+
+The legacy names `bkk-burma-2012` and `summer-2010` still work as URLs — they're redirect stubs pointing at the strongest segment.
+
+Total ~270 MB on disk. Nothing in `/Volumes/Groke/Photos/` was touched.
 
 ## Run it
 
@@ -44,6 +50,11 @@ Replace the `dataset=` value with `summer-2010` or `norway-weekend-2013` for the
 - **Moves GPX time format includes milliseconds and `+offset`** (`2013-07-05T12:15:27.000+01:00`) where Garmin uses `Z`. Parser fixed to handle both.
 - **The "London weekend 2013" label was wrong** — I'd seen a 2013-02 Moves file at London coords (Feb walking commute) and assumed July 2013 was the same place. The July 2013 photos are actually at Oppdal, Norway. Renamed to `norway-weekend-2013` in all files.
 - **Headless screenshots at mid-trip seek don't show all photos** — the renderer only prefetches photos near the moving cursor, and a `?seek=` jump doesn't have time to walk through all the prior photos. Live playback in a real browser shows them all correctly; the screenshots underrepresent what a played-back render looks like. To get a watchable artifact we'd want to record live playback (next step).
+- **Continental zoom-out at flights** was pulling the camera far back for Summer 2010. Fix: split GPX at any consecutive-pair gap of >100km & >30min. Each segment becomes its own dataset. See `build_dataset.py:split_segments` and `HANDOVER.md` decision #2. Timo's rule was explicit: car/train/bus/walking only.
+- **Moves GPX has no `<ele>`** — every Oppdal trkpt loaded as elevation 0. Fix: `lookup_elevation.py` calls Norwegian Kartverket's DTM1 point service post-hoc (1877 unique points, all fetched successfully). Only Norway; global DEMs would need a different source.
+- **Norway's mountain markers were absurd** — the SWF's `(ele × 0.8 + 80) / 100` formula gave 18× markers at 2200m. Capped at 1.6× in `render.html:drawMinutes`. Preserves variation up to ~125m elevation then plateaus.
+- **Legacy URLs 404-ed after the split** — `?dataset=bkk-burma-2012` broke because the combined folder was replaced with per-segment folders. Fix: `<name>/manifest.js` is now a redirect stub that swaps `dataset=` to the strongest segment and preserves other query params.
+- **Safari/Chrome block `fetch()` from `file://`** — the first version used `fetch("manifest.json")` and hung at "loading…". Fix: manifests are `manifest.js` (JSONP-style `window.__MANIFEST = {…};`) loaded via `<script>` tag, which is exempt from same-origin policy.
 
 ## What this confirms
 
@@ -55,6 +66,9 @@ Replace the `dataset=` value with `summer-2010` or `norway-weekend-2013` for the
 ## What's still open
 
 - **Live-playback video capture** — would let us evaluate the time dimension properly. Current screenshots are static and underrepresent the piece. ffmpeg + headless Chrome with `?play=1` and screen-record at 30 fps would do it, ~3-min clips per dataset.
-- **The projection isn't latitude-aware.** SWF's `gLatScale=-800, gLonScale=400` was tuned for Iceland's ~64°N. At Bangkok's 13°N the natural lat:lon ratio is closer to 1:1, but the renderer still applies the 2:1 squash. The result is "Bangkok rendered in the Iceland projection" — defensible as a style, but worth flagging if we ever want geographic accuracy.
+- **The projection isn't latitude-aware.** SWF's `gLatScale=-800, gLonScale=400` was tuned for Iceland's ~64°N. At Bangkok's 13°N the natural lat:lon ratio is closer to 1:1, but the renderer still applies the 2:1 squash. The result is "Bangkok rendered in the Iceland projection" — defensible as a style, but worth flagging if we ever want geographic accuracy. **An overnight branch (`overnight/2026-05-14-projection-latitude-aware`, commit `6fc9db1`) has a first attempt at this, not merged.**
+- **Discoverability.** Right now you have to know the exact `?dataset=<name>` string. An index.html menu would help. **`overnight/2026-05-15-speculation-index` (commit `12578b1`) looks like it addresses this, not merged.**
 - **The "place" entries in Moves storyline data are unused.** They carry Foursquare venue names (Hotel, Datacenter, "Place in Urbanización Los Espartales"). Could render as a fourth visual element (faint labelled markers) alongside the photo frames. New vocabulary.
 - **Other media as events.** The pipeline is structurally indifferent to what the event is. A heart-rate spike, an audio recording, a text message, a transaction — anything time-stamped and spatial-by-association can bloom-and-fade through the same physics.
+
+See `HANDOVER.md` for the full state at session end, including the four unmerged `overnight/*` branches.
