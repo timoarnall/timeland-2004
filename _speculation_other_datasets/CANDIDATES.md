@@ -32,7 +32,7 @@ Photo archive density (top dense days where date-stamped filenames let me count 
 |---|---|
 | 2004-07-03 — 892 (Iceland Geysir day) | 2017-06-26 — 1295 (no GPS) |
 | 2005-05-15 — 533 | 2014-03-19 — 942 (Madrid) |
-| 2004-07-01 — 451 (Iceland start) | 2013-07-06 — 654 (London weekend) |
+| 2004-07-01 — 451 (Iceland start) | 2013-07-06 — 654 (Norway weekend, Oppdal) |
 | 2005-07-07 — 427 | 2010-11-03 — 647 |
 | 2005-05-14 — 337 | 2009-11-19 — 641 |
 
@@ -61,7 +61,9 @@ Photo archive density (top dense days where date-stamped filenames let me count 
 - Why this works: shows the camera at **continental scale** — what does Timeland look like when the track is 2,000 km long and the events are sparser per day but spread across countries? The auto-zoom should pull back to a different reading.
 - Test before committing: merge the four GPX files in time order and verify there's no gap larger than the camera-spring can absorb at the inter-country handoffs.
 
-### 3. The London Weekend, 5–7 July 2013 (MOVES-ERA MICRO-TIMELAND)
+### 3. The Norway Weekend (Oppdal), 5–7 July 2013 (MOVES-ERA MICRO-TIMELAND)
+
+*Planned as "the London weekend"; the July 2013 photos are actually Oppdal, Norway (see HANDOVER.md decision #7). Built as `norway-weekend-2013`.*
 
 - Tracks (in Moves export):
   - `walking_20130705.gpx` 269 trkpts, `walking_20130706.gpx` **2,046 trkpts**, `walking_20130707.gpx` 747 trkpts
@@ -96,7 +98,7 @@ Renders are pure-data — no copies of the original files, just paths.
 Day-one tests:
 
 1. **Candidate 1 (BKK-Burma)** — full trip, image bloom from photo midpoints, 4-minute replay.
-2. **Candidate 3 (London weekend)** — Moves walking + photos. Verify the higher GPS cadence reads cleanly.
+2. **Candidate 3 (Norway weekend, Oppdal)** — Moves walking + photos. Verify the higher GPS cadence reads cleanly.
 3. **Candidate 5 (Madrid)** — render *without* photos first (just track + place wpt names) to see the spatial collapse. Then add photos.
 
 If those three each produce a watchable 1-minute clip, the pipeline is real and we can pick the strongest candidate to push further.

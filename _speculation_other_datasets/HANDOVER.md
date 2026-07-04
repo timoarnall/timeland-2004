@@ -67,7 +67,7 @@ URL params: `?dataset=<name>` (required), `?seek=0..1`, `?play=1`, `?bg=white`, 
 
 **6. Moves GPX has `lon` before `lat`** in attribute order, and time strings look like `2013-07-05T12:15:27.000+01:00` (Garmin uses `Z`). Parser tolerates both.
 
-**7. The "London weekend 2013-07-05" candidate in `CANDIDATES.md` is actually Oppdal, Norway.** I conflated a 2013-02 London Moves trace with the July 2013 photos. Renamed to `norway-weekend-2013` everywhere. `CANDIDATES.md` still has the old title in one place.
+**7. The "London weekend 2013-07-05" candidate in `CANDIDATES.md` is actually Oppdal, Norway.** I conflated a 2013-02 London Moves trace with the July 2013 photos. Renamed to `norway-weekend-2013` everywhere, including `CANDIDATES.md` (titles corrected 2026-07-04).
 
 **8. The projection isn't latitude-aware.** The renderer uses SWF's `gLatScale=-800, gLonScale=400` (2:1 squash tuned for Iceland's ~64°N). Applied verbatim to Bangkok (~13°N) it stretches east-west more than reality. Defensible as a style but flagged.
 
@@ -102,7 +102,7 @@ Bring these into the working tree if you want to iterate on them; the overnight-
 - **`?dataset=<name>` menu.** Right now the user has to know the exact segment name. A single `index.html` listing all datasets + links + seek presets would remove that friction. See the `overnight/2026-05-15-speculation-index` branch.
 - **Live-playback video capture.** ~3 min per segment. `--headless=new --autoplay-policy=no-user-gesture-required` + a screen-recorder wrapper. Would let us present the work as videos rather than the live prototype.
 - **Foursquare place labels from Moves storyline `<wpt>` blocks.** Currently unused. Would introduce a fourth visual element and read as "the day looked like this: hotel → café → museum → hotel."
-- **Bug fixes in the redirect stubs.** They swap `dataset=` but the `location.replace` includes `location.hash` twice (once at the end). Not observed to cause problems, but worth cleaning if you touch them.
+- ~~**Bug fixes in the redirect stubs.**~~ Checked 2026-07-04: no version of the committed stubs doubles `location.hash` — it is appended once, correctly. Nothing to fix.
 
 ## For the next agent
 
