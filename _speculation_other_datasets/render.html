@@ -73,6 +73,15 @@ const dataset = params.get('dataset') || 'bkk-burma-2012';
 const MANIFEST_URL = `${dataset}/manifest.js`;
 const THUMB_DIR    = `${dataset}/thumbs/`;
 
+// Latitude-aware projection. Default off — keeps the Iceland-tuned
+// 1:2 lon:lat ratio that the SWF hand-picked. With ?latfit=1, longitude
+// is rescaled by cos(centerLat) / cos(64.5°) so a dataset at Bangkok (13°N)
+// is no longer compressed horizontally to half its real proportions.
+// Iceland's centerLat ~64.5 makes the multiplier ≈1.0, so the main piece
+// would look unchanged if this flag were applied there.
+const LATFIT = params.get('latfit') === '1';
+const ICELAND_REF_LAT_RAD = 64.5 * Math.PI / 180;
+
 function lastIndexBefore(arr, t, key = 't') {
   if (arr.length === 0 || t < arr[0][key]) return -1;
   if (t >= arr[arr.length - 1][key]) return arr.length - 1;
@@ -232,9 +241,18 @@ function loadManifestScript(url) {
   const accent = manifest.accent || '#c40000';
 
   // trkpts come as [t_ms, lat, lon, ele]
+  // Compute lon scale. Default keeps the SWF's hand-tuned G_LON_SCALE=400.
+  // With ?latfit=1, multiply by cos(centerLat)/cos(64.5°) so non-Iceland
+  // datasets aren't horizontally compressed.
+  let centerLat = 0;
+  for (const [, lat] of manifest.trkpts) centerLat += lat;
+  centerLat /= manifest.trkpts.length || 1;
+  const lonScale = LATFIT
+    ? G_LON_SCALE * (Math.cos(centerLat * Math.PI / 180) / Math.cos(ICELAND_REF_LAT_RAD))
+    : G_LON_SCALE;
   const allPts = manifest.trkpts.map(([t, lat, lon, ele]) => ({
     raw_lat: lat, raw_lon: lon,
-    x: lon * G_LON_SCALE,
+    x: lon * lonScale,
     y: lat * G_LAT_SCALE,
     ele,
     t,
