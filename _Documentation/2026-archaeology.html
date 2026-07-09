@@ -1,0 +1,1308 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Timeland — the 2026 archaeology</title>
+<style>
+:root{
+  --bg:#0d0e10; --ink:#f2f0ec; --dim:#8b8880; --faint:#3a3a3d;
+  --accent:#e8a33d; --panel:#141519; --code:#111216;
+  --body:18px; --head:36px;
+  --font:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,monospace;
+  --measure:34rem;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:600 var(--body)/1.62 var(--font);
+  -webkit-font-smoothing:antialiased;
+}
+#bar{position:fixed;top:0;left:0;height:2px;background:var(--accent);width:0;z-index:50}
+.wrap{display:grid;grid-template-columns:16rem minmax(0,var(--measure)) 1fr;gap:3rem;
+  max-width:76rem;margin:0 auto;padding:3rem 2rem 8rem}
+nav{position:sticky;top:3rem;align-self:start;max-height:80vh;overflow-y:auto;
+  font-size:var(--body);line-height:1.45}
+nav h3{margin:0 0 1rem;font-size:var(--body);color:var(--dim)}
+nav a{display:block;color:var(--faint);text-decoration:none;padding:.28rem 0}
+nav a:hover{color:var(--dim)}
+nav a.on{color:var(--ink)}
+nav a.done{color:var(--accent)}
+nav a.done::after{content:"  read";font-size:.72em;color:var(--faint)}
+main{min-width:0}
+h1{font-size:var(--head);line-height:1.15;margin:0 0 3rem;color:var(--ink)}
+h2{font-size:var(--head);line-height:1.2;margin:0;color:var(--ink)}
+h3{font-size:var(--body);margin:2.6rem 0 .6rem;color:var(--accent)}
+h4{font-size:var(--body);margin:2rem 0 .5rem;color:var(--dim)}
+section{margin:0 0 5rem;scroll-margin-top:2rem}
+section.read h2{color:var(--dim)}
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;
+  margin:0 0 1.6rem;flex-wrap:wrap}
+p{margin:0 0 1.2rem;color:var(--ink)}
+li{margin:0 0 .4rem}
+ul,ol{margin:0 0 1.2rem;padding-left:1.2rem}
+blockquote{margin:1.4rem 0;padding-left:1.2rem;border-left:2px solid var(--faint);color:var(--dim)}
+code{font:400 .88em/1.5 var(--mono);color:var(--dim);background:none;word-break:break-word}
+pre.code{background:var(--code);padding:1rem 1.1rem;overflow-x:auto;margin:1.4rem 0;border-radius:4px}
+pre.code code{color:var(--dim);font-size:.84em}
+table{border-collapse:collapse;width:100%;margin:1.4rem 0;font-size:.9em}
+th{text-align:left;color:var(--dim);font-weight:600;padding:.4rem .8rem .4rem 0;vertical-align:top}
+td{padding:.35rem .8rem .35rem 0;color:var(--ink);vertical-align:top}
+a{color:var(--accent)}
+button{font:600 .84em var(--font);color:var(--dim);background:var(--panel);
+  border:none;border-radius:3px;padding:.4rem .8rem;cursor:pointer}
+button:hover{color:var(--ink)}
+button.read[aria-pressed="true"]{color:var(--bg);background:var(--accent)}
+.ctl{display:flex;gap:.4rem;flex:0 0 auto}
+.note{display:none;width:100%;margin:0 0 1.6rem}
+.note.open{display:block}
+.note textarea{width:100%;min-height:5rem;background:var(--panel);color:var(--ink);
+  border:none;border-radius:4px;padding:.9rem;font:600 .92em/1.5 var(--font);resize:vertical}
+.note textarea:focus{outline:1px solid var(--faint)}
+.note .hint{color:var(--faint);font-size:.8em;margin:.4rem 0 0}
+#foot{position:fixed;bottom:0;left:0;right:0;background:var(--panel);
+  padding:.9rem 2rem;display:flex;align-items:center;gap:1.4rem;z-index:40}
+#foot .count{color:var(--dim);font-size:.9em}
+#foot .count b{color:var(--ink);font-weight:600}
+#foot .spacer{flex:1}
+#copy{background:var(--accent);color:var(--bg)}
+#copy:hover{color:var(--bg);opacity:.85}
+#reset{background:none}
+@media(max-width:900px){
+  .wrap{grid-template-columns:1fr;padding:2rem 1.2rem 8rem}
+  nav{position:static;max-height:none;margin-bottom:2rem}
+}
+</style>
+</head><body>
+<div id="bar"></div>
+<div class="wrap">
+<nav><h3>Contents</h3><a href="#i-the-artefacts-on-disk">I. The artefacts on disk</a>
+<a href="#ii-the-2004-design-intent-in-timo-and-even-s-words">II. The 2004 design intent, in Timo and Even&#x27;s words</a>
+<a href="#iii-the-brief-in-timo-s-words-in-order">III. The brief, in Timo&#x27;s words, in order</a>
+<a href="#iv-the-tools-that-were-reached-for">IV. The tools that were reached for</a>
+<a href="#v-swf-mechanism-reference">V. SWF mechanism reference</a>
+<a href="#vi-the-port">VI. The port</a>
+<a href="#vii-bugs-preserved-on-purpose-and-the-two-later-reverted">VII. Bugs preserved on purpose (and the two later reverted)</a>
+<a href="#viii-the-visual-arc-from-the-mov-frames">VIII. The visual arc (from the .mov frames)</a>
+<a href="#ix-the-chronology-in-eight-commits">IX. The chronology, in eight commits</a>
+<a href="#x-the-audit-chain">X. The audit chain</a>
+<a href="#xi-what-claude-got-wrong-on-first-pass">XI. What Claude got wrong on first pass</a>
+<a href="#xii-what-only-timo-could-do">XII. What only Timo could do</a>
+<a href="#xiii-ten-things-to-keep-in-mind-for-the-next-archaeology">XIII. Ten things to keep in mind for the next archaeology</a>
+<a href="#xiv-what-this-archaeology-actually-was">XIV. What this archaeology actually was</a>
+<a href="#xv-the-side-by-side-harness-in-thirteen-iterations">XV. The side-by-side harness, in thirteen iterations</a>
+<a href="#xvi-the-artist-coder-problem">XVI. The artist-coder problem</a>
+<a href="#xvii-even-s-reactions-in-three-rounds">XVII. Even&#x27;s reactions, in three rounds</a></nav>
+<main><h1>2026 archaeology of <em>Time that land forgot</em></h1>
+<p>A complete account of the May 2026 recreation of a 2004 Flash piece by Timo Arnall and Even Westvang. What existed on disk, what Timo asked for, what Claude found, what was preserved as bug, what was ported verbatim, what was approximated, what was missed, where the human was load-bearing.</p>
+<p>Written 2026-05-09 from the working state of <code>/Volumes/Groke/Projects/2004 - Timeland/</code>, the git history at commit <code>d008383</code>, the verbatim session transcript, the original 2004 elasticspace blog post recovered from the WordPress export at <code>/Volumes/Groke/Projects/2026 - Elasticspace update/00-source-of-truth/original-wp-export.xml</code>, the FFDec-decompiled AS2 source at <code>/tmp/ffdec_out/scripts/frame_1/</code>, and <code>_archive_2004/swfdump_full.txt</code> (the bytecode disassembly).</p>
+<p>This is the technical record. The companion essay at <code>01-content/drafts/draft-timeland-archaeology-2026.html</code> in the elasticspace project is the lay version for publication.</p>
+<section id="i-the-artefacts-on-disk" data-title="I. The artefacts on disk">
+<div class="shead"><h2>I. The artefacts on disk</h2><div class="ctl" data-for="i-the-artefacts-on-disk"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>The folder had been sitting untouched for years. No git, no CLAUDE.md, no notes. What was in it:</p>
+<table>
+<thead><tr><th>File</th><th>Size</th><th>What it is</th><th>State in 2026</th></tr></thead>
+<tbody>
+<tr><td><code>_archive_2004/timeland19.swf</code></td><td>27,211 B</td><td>Compiled Flash 6 movie. Header: 120 fps, 5 frames, 500 × 500, white background. The thing a browser played in 2004.</td><td>Plays in nothing. No browser supports Flash since 2020.</td></tr>
+<tr><td><code>_archive_2004/timeland.fla</code></td><td>65,536 B</td><td>Macromedia Flash MX project file. The source we built it from.</td><td>Unopenable. <code>file(1)</code> reports &quot;Composite Document File V2 Document, Cannot read section info&quot;. MX hasn&#x27;t shipped since 2004; Animate cannot read MX-format files.</td></tr>
+<tr><td><code>_archive_2004/time_land_forgot.mov</code></td><td>84.8 MB</td><td>192-second QuickTime screen-recording of the SWF playing on Even&#x27;s CEST-set Mac.</td><td>Plays, but reported 0 bytes at session start; restored from <code>2001-2015 - Visual Experiments</code>.</td></tr>
+<tr><td><code>data/timo_iceland_noflight.gpx</code></td><td>621 KB</td><td>Garmin eTrex GPS log, flight legs stripped. 5,869 trkpts. 30 June – 6 July 2004. UTC timestamps.</td><td>Reads cleanly.</td></tr>
+<tr><td><code>data/imageData.xml</code></td><td>18.3 KB</td><td>EXIF timestamps of 241 photographs. Generated by <code>_archive_2004/exif2xml/process.py</code> in 2004.</td><td>Reads cleanly. The <code>2020 Backup</code> copy held only 159 entries; the older <code>Archive (2001-2006)</code> copy held the full 241.</td></tr>
+<tr><td><code>data/photos/</code></td><td>—</td><td>260 JPEGs at 320 × 213 px. The bytes that loaded into the SWF in 2004.</td><td>Display fine.</td></tr>
+<tr><td><code>_archive_2004/index_original.html</code></td><td>3.5 KB</td><td>The 2004 elasticspace WordPress page that embedded the SWF. Textpattern markup, <code>&lt;object&gt;</code> and <code>&lt;embed&gt;</code> tags.</td><td>Renders, but the embedded SWF doesn&#x27;t play.</td></tr>
+<tr><td><code>_archive_2004/README_2004.txt</code></td><td>728 B</td><td>2004 author note: how to wire up the three inputs, GPSbabel pointer, &quot;questions to even@polarfront.org&quot;.</td><td>Plain text, fine.</td></tr>
+<tr><td><code>_archive_2004/changelog.txt</code></td><td>212 B</td><td>One entry, 31 July 2004. Names the bug that &quot;kept it from running on the PC&quot;, and the save-down that locked the FLA forever.</td><td>Plain text, fine.</td></tr>
+<tr><td><code>_archive_2004/exif2xml/EXIF.py</code> + <code>process.py</code></td><td>34 KB</td><td>Python EXIF reader from 2004 plus an 11-line driver script.</td><td>Still runs unmodified in Python 3.11.</td></tr>
+<tr><td><code>_archive_2004/license.txt</code></td><td>18 KB</td><td>GPL.</td><td>Plain text, fine.</td></tr>
+</tbody>
+</table>
+<p>The pattern is striking. The compiled binary survives but cannot run. The source file survives but cannot be opened. The screen-recording survives and can be played. The text survives without effort: prose, Python, GPX, XML, README, changelog, license — all readable as the day they were written. The two pieces that needed special software (SWF + FLA) are the two that were closest to being lost.</p>
+</section>
+<section id="ii-the-2004-design-intent-in-timo-and-even-s-words" data-title="II. The 2004 design intent, in Timo and Even&#x27;s words">
+<div class="shead"><h2>II. The 2004 design intent, in Timo and Even&#x27;s words</h2><div class="ctl" data-for="ii-the-2004-design-intent-in-timo-and-even-s-words"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>The original blog post was published 30 July 2004 at 13:17 UTC at &lt;https://www.elasticspace.com/2004/07/timeland&gt;. It has been preserved verbatim in the WordPress XML export. The load-bearing passages:</p>
+<blockquote><em>We chose to create a balance of representation in the interface around a set of prerogatives: first image (for expressivity), then time (for narrative), then location (for spatialising, and commenting on, image and time).</em></blockquote>
+<blockquote><em>The first prototype is a linear experience of a journey, suitable for a gallery or screening, where images are overlaid into textural clusters of experience. It shows a scaling representation of the travel route based on the distance covered the last 20-30 minutes. Images recede in scale and importance as they move back in time. Each tick represents 1 minute, every red tick represents an hour.</em></blockquote>
+<blockquote><em>This was solved by creating a &#x27;camera&#x27; connected to a spring system that attempts to center the image on the advancing &#x27;now&#x27; while keeping a recent history of 20 points in view. The parser for the GPS tracks discards the positional data between the minutes and the animation is driven forward by every new &#x27;minute&#x27; we find in the track and that is inserted into the view of the camera.</em></blockquote>
+<blockquote><em>There will be discontinuities in the tracklogs as the GPS is switched off during standstill and nights. Currently the system smoothes tracklog time to make breaks seem more like quick transitions.</em></blockquote>
+<blockquote><em>The system should ideally maintain a &#x27;subjective feeling&#x27; of time adjusted to picture taking and movement; a temporal scaling as well as a spatial scaling. This would be an analog to our own remembering of events: minute memories from double loop roller-coasters, smudged holes of memory from sleepy nights.</em></blockquote>
+<blockquote><em>Most of the tweaking in the animation system went into refining the extents system around the camera history &amp; zoom, acceleration and friction of spring systems and the ratio between insertion of new points and animation ticks.</em></blockquote>
+<p>The post also documents that Timo had been photographing daily life with a small digital camera for five years before the workshop, with ~7000 photos in the archive. The Iceland trip was a particular case of an existing practice. The piece grew out of his &quot;interest in the narrative beyond the photographic frame&quot; and Even&#x27;s prior work on &quot;dynamic continuous interfaces&quot; at polarfront.org.</p>
+<p>The workshop was <em>Iceland inside and out</em>, hosted by Pallit at the Iceland Academy of the Arts in Höfn. Matias Arje was also there, working on related locative interfaces.</p>
+<p>The closing thought of the 2004 post, which is worth recovering for context:</p>
+<blockquote><em>Another strand of ideas we explored was using the metaphor of a 16mm Steenbeck edit deck: scrubbing 16mm film through the playhead and watching the resulting sound and image come together: we could use the scrubbing of an image timeline, to control all of the other metadata, and give real control to the user.</em></blockquote>
+<p>The 2026 recreation has a scrub bar. The original Flash piece did not. The scrub bar fulfils the wish in the closing paragraph of the 2004 post, twenty-two years after it was written.</p>
+</section>
+<section id="iii-the-brief-in-timo-s-words-in-order" data-title="III. The brief, in Timo&#x27;s words, in order">
+<div class="shead"><h2>III. The brief, in Timo&#x27;s words, in order</h2><div class="ctl" data-for="iii-the-brief-in-timo-s-words-in-order"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>Twenty-four prompts across one extended session. The pattern that matters: never guess, never round, never approximate, and never accept &quot;matches closely&quot; as good enough.</p>
+<ol>
+<li>*&quot;this project needs resurrecting. The movies no longer play, the</li>
+</ol>
+<p>flash is no longer loadable. can you find a way to recreate it?&quot;*</p>
+<ol>
+<li>*&quot;oh no the aesthetics of the original are super important, it&#x27;s</li>
+</ol>
+<p>more like an experience than a tool. It&#x27;s like watching a film, with the canvas centred on the gps position, the paths moving around it, the photos layering in with size and transparency. Please deconstruct the flash file using whatever parsers you need.&quot;*</p>
+<ol>
+<li>*&quot;please look at fade and scale timing, the images used to start</li>
+</ol>
+<p>larger and scale down. Please do an audit, make sure you&#x27;ve captured everything from the swf file, really important for archival reasons to have it pixel for pixel accurate.&quot;*</p>
+<ol>
+<li>*&quot;the transparency is definitely off, please dig more into how it</li>
+</ol>
+<p>used to play.&quot;*</p>
+<ol>
+<li>*&quot;the transparency looks lovely, but it should curve up a bit</li>
+</ol>
+<p>faster. Can you not see exactly how the old code did it?&quot;*</p>
+<ol>
+<li><em>&quot;show me the original movie.&quot;</em></li>
+<li>*&quot;go and take screenshots of that movie. Overall it&#x27;s much closer</li>
+</ol>
+<p>to the data, more zoomed in, the images are much more visible much more quickly, but still have transparency.&quot;*</p>
+<ol>
+<li>*&quot;the original is still much more zoomed in. please do more</li>
+</ol>
+<p>studies, of the swf and of the screen captures.&quot;*</p>
+<ol>
+<li><em>&quot;the images never seem to reach full opacity.&quot;</em></li>
+<li>*&quot;please do a very broad audit with as many sources as you can</li>
+</ol>
+<p>find: the movie, the writeup on elasticspace.com, the fla (even if it&#x27;s truncated) and the swf. Launch as many agents as you need.&quot;*</p>
+<ol>
+<li>*&quot;looks to me like the circles and crosshairs are on top of the</li>
+</ol>
+<p>photos in the original. The photos definitely quickly reach full opacity in the original too. Are you sure the photo appearances are at the right time, not an hour off. Was there any offset in the code?&quot;*</p>
+<ol>
+<li>*&quot;I want you to be 100% certain that the gps and photos are</li>
+</ol>
+<p>synced properly. ... I know many of the photos were actually taken on a bus. ... we definitely stopped at a hot spring and jumped in, on a long walk, there should be a pause there. look for pauses and travel times. I want to get this 100% right before continuing.&quot;*</p>
+<ol>
+<li>*&quot;so why does it look different... why does the walk in</li>
+</ol>
+<p>Reykjavik look so different in the original to now... why we get so much closer to it... Do a mechanisms, structure, visualisation, camera position pass.&quot;*</p>
+<ol>
+<li>*&quot;now the imagery by default looks a little large when it first</li>
+</ol>
+<p>appears.&quot;*</p>
+<ol>
+<li>*&quot;I want you to be able to verify the timings are correct,</li>
+</ol>
+<p>difficult for me to judge.&quot;*</p>
+<ol>
+<li>*&quot;please do another audit of the original code for how the sizing</li>
+</ol>
+<p>works and the transparency and camera behaviour works.&quot;*</p>
+<ol>
+<li>*&quot;render a side by side, quicktime vs new version, so we can</li>
+</ol>
+<p>compare.&quot;*</p>
+<ol>
+<li>*&quot;the transparency still seems a little too transparent, the</li>
+</ol>
+<p>original images seemed to get more clear, earlier.&quot;*</p>
+<ol>
+<li>*&quot;please commit and make sure it runs in github sites or whatever,</li>
+</ol>
+<p>so I can share it.&quot;*</p>
+<ol>
+<li>*&quot;why is the original flying around, much closer, and the new</li>
+</ol>
+<p>one is so static?&quot;*</p>
+<ol>
+<li>*&quot;don&#x27;t dodge the question. the question is about camera dynamics</li>
+</ol>
+<p>and zoom level and image behaviour.&quot;*</p>
+<ol>
+<li>*&quot;or maybe they are not matched, looking again it&#x27;s hard to tell.</li>
+</ol>
+<p>please audit this very very carefully.&quot;*</p>
+<ol>
+<li>*&quot;I pulled the date/time and lat long from the swf left hand</li>
+</ol>
+<p>side of the video btw, so do whatever you need to do to interpret that wrong time.&quot;*</p>
+<ol>
+<li>*&quot;these words are doing a lot of work. I want it to match</li>
+</ol>
+<p>exactly like the original, so closely is not yet good enough.&quot;*</p>
+<p>When words like <em>closely</em>, <em>similar</em>, <em>roughly</em> appeared in a Claude summary, Timo called them out. In archaeology those words are doing work that is not justified by the evidence.</p>
+</section>
+<section id="iv-the-tools-that-were-reached-for" data-title="IV. The tools that were reached for">
+<div class="shead"><h2>IV. The tools that were reached for</h2><div class="ctl" data-for="iv-the-tools-that-were-reached-for"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<ul>
+<li><code>swfdump</code> (<code>swftools</code> 0.9.2) for the bytecode disassembly. Run with</li>
+</ul>
+<p><code>-atp</code> produces 3,757 lines of structured listing.</p>
+<ul>
+<li><code>swfextract</code> for shape and asset extraction.</li>
+<li><code>ffmpeg</code> and <code>ffprobe</code> for inspecting and extracting frames from</li>
+</ul>
+<p>the .mov. Two passes: 1 fps (192 frames) and 2 fps (384 frames), saved at <code>_archive_2004/mov_frames/</code> and <code>_archive_2004/mov_frames_2fps/</code>.</p>
+<ul>
+<li>JPEXS Free Flash Decompiler (FFDec, version 26.0.0). Required Java.</li>
+</ul>
+<p>OpenJDK 25 installed via Homebrew specifically for this. FFDec produced 19 clean AS2 source files at <code>/tmp/ffdec_out/scripts/frame_1/</code>, one or more classes per file:</p>
+<ul>
+<li><code>DoAction.as</code> — Animatable base class</li>
+<li><code>DoAction_2.as</code> — TimeKeeper</li>
+<li><code>DoAction_4.as</code> — CameraKeeper</li>
+<li><code>DoAction_3.as</code> — ImageKeeper</li>
+<li><code>DoAction_5.as</code> — TrackKeeper, TrackPoint</li>
+<li><code>DoAction_6.as</code> — Image (per-photo class)</li>
+<li><code>DoAction_8.as</code> — Minute, Hour</li>
+<li><code>DoAction_10.as</code> — Day</li>
+<li><code>DoAction_12.as</code> — dateConvert utility, removeElement</li>
+<li><code>DoAction_13.as</code> — animationManager (init, tick, addListener, removeListener)</li>
+<li><code>DoAction_14.as</code> — AnimParser</li>
+<li><code>DoAction_15.as</code> — XML extensions (load, parseNext, loadMovie wrapper)</li>
+<li><code>DoAction_16.as</code> — main initialization with constants</li>
+<li><code>exiftool</code> to confirm the JPEG EXIF carried no timezone field</li>
+</ul>
+<p>(it didn&#x27;t; typical for 2004 cameras).</p>
+<ul>
+<li>Python ad-hoc scripts for: pause detection in the GPX,</li>
+</ul>
+<p>walking-pace hypothesis tests, photo-to-pause matching under multiple TZ offsets, lat/lon comparison between SWF display labels and our data, frame composition for the side-by-side video.</p>
+<ul>
+<li>Headless Chrome for capturing the recreation at exact <code>?seek=</code></li>
+</ul>
+<p>positions for frame-by-frame comparison.</p>
+<ul>
+<li>Three sub-agents launched in parallel for the broad audit:</li>
+</ul>
+<p>Wayback / web research on the writeup; SWF-version comparison and FLA strings extraction; visual frame-by-frame comparison.</p>
+<ul>
+<li><code>git lfs</code> for the 84 MB .mov, after the first push to GitHub</li>
+</ul>
+<p>warned about the 50 MB limit.</p>
+<ul>
+<li><code>gh</code> to create the public repo, enable Pages, and verify asset</li>
+</ul>
+<p>URLs returned 200.</p>
+</section>
+<section id="v-swf-mechanism-reference" data-title="V. SWF mechanism reference">
+<div class="shead"><h2>V. SWF mechanism reference</h2><div class="ctl" data-for="v-swf-mechanism-reference"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>The original program structure, recoverable in full from the FFDec decompile. Names and constants are quoted verbatim from AS2.</p>
+<h3 id="v-1-initialization-order-doaction-16-as">V.1 Initialization order (DoAction_16.as)</h3>
+<p>On frame 1, <code>init()</code> runs:</p>
+<ol>
+<li>Set Stage: <code>scaleMode = &quot;noScale&quot;</code>, <code>align = &quot;TL&quot;</code>.</li>
+<li>Read URL parameters: <code>localData</code>, <code>noimages</code>, <code>DEBUG</code>. Set</li>
+</ol>
+<p><code>displayImages = true</code> unless <code>?noimages=1</code>.</p>
+<ol>
+<li>Pick URLs from one of three sets (local / elasticspace / debug).</li>
+</ol>
+<p>The shipped URLs were <code>http://www.elasticspace.com/timeland/timo_iceland_noflight.gpx</code>, <code>imageData.xml</code>, and <code>loc/</code>.</p>
+<ol>
+<li><code>gLatScale = -800</code>, <code>gLonScale = 400</code>.</li>
+<li>Construct <code>_root.trackKeeper = new TrackKeeper()</code>,</li>
+</ol>
+<p><code>cameraKeeper = new CameraKeeper()</code>, <code>imageKeeper = new ImageKeeper()</code>, <code>timeKeeper = new TimeKeeper()</code>.</p>
+<ol>
+<li><code>animationManager_addListener(cameraKeeper)</code>,</li>
+</ol>
+<p><code>animationManager_addListener(timeKeeper)</code>.</p>
+<ol>
+<li>Register Stage resize listener.</li>
+<li>Construct AnimParser for the image XML (<code>imageBuilder</code> /</li>
+</ol>
+<p><code>imageFinalizer</code>).</p>
+<ol>
+<li>Construct AnimParser for the GPX (<code>trackBuilder</code> / <code>trackFinalizer</code>).</li>
+<li>The animation loop runs forever from sprite 0022 at the SWF&#x27;s</li>
+</ol>
+<p>declared 120 fps (actual on 2004 hardware: ~30 fps).</p>
+<h3 id="v-2-the-animation-manager-doaction-13-as">V.2 The animation manager (DoAction_13.as)</h3>
+<p>Three functions plus an init:</p>
+<pre class="code" data-lang="text"><code>
+function animationManager_init() {
+   _root.listeners = new Array();
+}
+function animationManager_tick() {
+   for (i in _root.listeners) {
+      _root.listeners[i].animate();
+   }
+}
+function animationManager_addListener(ref) {
+   _root.listeners.push(ref);
+}
+function animationManager_removeListener(ref) {
+   _root.listeners = removeElement(_root.listeners, ref);
+}
+</code></pre>
+<p>Listener order at runtime (the order matters): TimeKeeper, CameraKeeper, AnimParser (×2 — image XML, then GPX), each Image as it gets associated with a trkpt.</p>
+<p>Also defined in DoAction_13.as: an empty <code>function cameraManager() {}</code> that is never called. Dead code that shipped.</p>
+<h3 id="v-3-timekeeper-doaction-2-as">V.3 TimeKeeper (DoAction_2.as)</h3>
+<p>Fields: <code>time</code> (Date), <code>timeDest</code> (Date), <code>timeD</code> (number), <code>medianTime</code> (unused). Methods: <code>setTime</code>, <code>getTime</code>, <code>reset</code>, <code>animate</code>. The animate body is the load-bearing four-line spring:</p>
+<pre class="code" data-lang="text"><code>
+TimeKeeper.prototype.animate = function() {
+   t = this.time.getTime();
+   tDest = this.timeDest.getTime();
+   this.timeD += (t - tDest) * 4;
+   this.timeD *= 0.1;
+   if (this.timeD == nan) this.timeD = 0;
+   this.time.setTime(this.time.getTime() - this.timeD);
+};
+</code></pre>
+<p>Second-order damped spring. Stiffness 4×, damping 0.1 per frame. Steady-state lag at SWF&#x27;s per-frame 14-second target advance: ~17.5 trip-seconds. The bug-for-bug reproduction in JS preserves the <code>isNaN</code> guard as a single-line check.</p>
+<h3 id="v-4-camerakeeper-doaction-4-as">V.4 CameraKeeper (DoAction_4.as)</h3>
+<p>Three states defined: <code>CAMDRAWING = 0</code>, <code>LOCALTIME = 1</code>, <code>EXTENTS = 2</code>. LOCALTIME is defined and never used in the shipped flow.</p>
+<p>Fields per state:</p>
+<ul>
+<li><code>currentX</code>, <code>currentY</code>, <code>dX</code>, <code>dY</code>, <code>destX</code>, <code>destY</code> — the centre</li>
+</ul>
+<p>point and its velocity (CAMDRAWING).</p>
+<ul>
+<li><code>currentX1..2</code>, <code>currentY1..2</code>, <code>dX1..2</code>, <code>dY1..2</code>,</li>
+</ul>
+<p><code>destX1..2</code>, <code>destY1..2</code> — the bounding box and its velocity (used by EXTENTS, also by CAMDRAWING for trail-window framing).</p>
+<p>Spring constants per state:</p>
+<ul>
+<li>CAMDRAWING: <code>vel += err / 40; vel *= 0.69</code></li>
+<li>EXTENTS:    <code>vel += err / 3;  vel *= 0.59</code></li>
+</ul>
+<p>Trail window in CAMDRAWING: <code>refocus(this, trackKeeper.minutes.slice(-15, -1))</code>, i.e. the last 14 of 15 minutes. Last minute itself is the centre target.</p>
+<p>Scale calculation:</p>
+<pre class="code" data-lang="text"><code>
+case CAMDRAWING: scale = 90  * (mapWidth / (currentX2 - currentX1));
+case EXTENTS:    scale = 100 * (mapWidth / (currentX2 - currentX1));
+if (scale &gt; 2500) scale = 2500;
+canvas._xscale = scale; canvas._yscale = scale;
+</code></pre>
+<p>The 90× / 100× difference between states is the SWF v19 polish-pass value. The 2500 cap is hard.</p>
+<p><code>buildFinished()</code> (called from <code>trackFinalizer</code>): switches state to EXTENTS at end of trip parsing. This is what produces the final zoom-out.</p>
+<p><code>refocus()</code> has a known scope leak: <code>x1</code>, <code>y1</code>, <code>x2</code>, <code>y2</code>, <code>i</code>, <code>x</code>, <code>y</code> are all declared without <code>var</code>, so they leak as globals. Harmless but characteristic of 2004 ActionScript.</p>
+<h3 id="v-5-trackkeeper-doaction-5-as">V.5 TrackKeeper (DoAction_5.as)</h3>
+<p>Fields: <code>points</code> (TrackPoints), <code>days</code>, <code>hours</code>, <code>minutes</code> (arrays of marker objects), <code>lastDay</code>, <code>lastHour</code>, <code>lastMinute</code>, plus <code>minLat</code>, <code>maxLat</code>, <code>minLon</code>, <code>maxLon</code> (the EXTENTS bounds).</p>
+<p><code>addPoint(lon, lat, elevation, time)</code> does five things in order:</p>
+<ol>
+<li><code>_root.timeKeeper.setTime(time)</code> — the parser drives the clock.</li>
+<li>Update display text:</li>
+</ol>
+<p>``<code> _root.display._displayTime = time.toString(); _root.display._long = lon / gLatScale + &quot;N&quot;;    // BUG (see VII) _root.display._lat  = lat / gLatScale + &quot;W&quot;;    // BUG _root.display._elevation = &quot;elevation:&quot; + elevation + &quot;m&quot;; </code>``</p>
+<ol>
+<li>Construct <code>ref = new TrackPoint(lon, lat, elevation, time)</code>,</li>
+</ol>
+<p>push to <code>points</code>.</p>
+<ol>
+<li><code>updateExtents(lon, lat)</code>.</li>
+<li>If <code>imageKeeper.getCurrentImageTime() &lt; ref.getTime()</code>,</li>
+</ol>
+<p><code>imageKeeper.associateCurrentImage(ref)</code> — this is what activates the next photo. Note: triggered on parser-time, not on the eased display time. (See VI.7.)</p>
+<p>Then minute-marker rule: <code>if (lastMinute == -1)</code> add first minute, else <code>if (ref.getTime() &gt; lastMinute.getTime() + 30000)</code> add new minute. Then hour rule: <code>if (lastHour == -1)</code> first hour, else <code>if (lastHour.getHours() != ref.getHours())</code> new hour.</p>
+<p><code>addDay()</code> exists but is never called in the shipped flow.</p>
+<h3 id="v-6-imagekeeper-and-image-doaction-3-as-doaction-6-as">V.6 ImageKeeper and Image (DoAction_3.as, DoAction_6.as)</h3>
+<p>ImageKeeper holds an array of Image objects and an index <code>currentImage</code>. <code>addImage(time, fileName)</code> constructs and appends. <code>getCurrentImageTime()</code> returns the time of the next-up image. <code>associateCurrentImage(ref)</code> calls <code>setPointReference(ref)</code> on the next image, advances <code>currentImage</code>, and registers the image as an animation listener so its <code>animate()</code> will run every frame from now.</p>
+<p><code>Image.setPointReference(ref)</code>:</p>
+<ul>
+<li>Stores the trkpt.</li>
+<li><code>attachMovieClip(_root.canvas.innerCanvas, &quot;image&quot;)</code> — attaches the</li>
+</ul>
+<p>sprite id 0014.</p>
+<ul>
+<li>Sets <code>clip.placeHolder._visible = false</code>, <code>_alpha = 0</code>, <code>_x = -100000</code></li>
+</ul>
+<p>(off-screen during load).</p>
+<ul>
+<li>Sets <code>clip.placeholder.onCompleted = function() { this._parent.controller.timer = 0; this._parent.controller.loadFinished = 1; }</code>.</li>
+<li><code>clip.placeholder.loadMovie(_root.ImagePath + this.fileName, &quot;&quot;)</code>.</li>
+<li>Computes initial position: <code>x = point.getLongitude(); y = point.getLatitude();</code></li>
+<li>Calls <code>scale(1)</code>, <code>updatePosition()</code>, <code>animate()</code>.</li>
+</ul>
+<p><code>Image.animate()</code>:</p>
+<pre class="code" data-lang="text"><code>
+if (this.loadFinished) {
+   this.timer += 1.2;
+   if (this.timer &gt; 3) {
+      this.clip.placeholder._x = -160;
+      this.clip.placeholder._y = -106.5;
+      this.clip.placeholder._visible = true;
+   }
+   this.clip.placeholder._alpha = this.timer;
+   if (this.timer &gt; 100) {
+      trace(&quot;fade finished&quot;);
+      this.loadfinished = 0;     // BUG — wrong case (see VII)
+   }
+}
+if (this.hasRef) {
+   this.scale(3.5 + 9000000 / (Math.abs(_root.timeKeeper.getTime() - this.time.getTime()) + 1));
+}
+</code></pre>
+<p>Two notes:</p>
+<ul>
+<li>The fade ramp: <code>timer += 1.2</code> per frame, <code>_alpha = timer</code>. Reaches</li>
+</ul>
+<p>100 in 83 frames, which at 30 fps real is 2.77 seconds.</p>
+<ul>
+<li>The scale formula: <code>3.5 + 9_000_000 / (|now - photoTime|_ms + 1)</code>.</li>
+</ul>
+<p>At <code>dt = 0</code> this is 9,000,003.5 (absurd; Flash clamps via the canvas scale cap, the JS port via a <code>MAX_FINAL_SCALE = 100</code> safety). At <code>dt = 1000 ms</code> (1 trip-second), 9,003.5. At <code>dt = 9_000_000 ms</code> (2.5 trip-hours), 4.5. The function shrinks fast then long-tails.</p>
+<h3 id="v-7-animparser-doaction-14-as">V.7 AnimParser (DoAction_14.as)</h3>
+<p>Wraps an XML object. The constructor calls <code>XMLDoc.load(fileName)</code> and registers itself as an animation listener. Its <code>animate()</code>:</p>
+<pre class="code" data-lang="text"><code>
+if (this.XMLDoc.loaded) {
+   cnt = 0;
+   while (cnt &lt; 1) {
+      name = this.XMLDoc.parseNext();
+      if (this.XMLDoc.doneParsing) {
+         this.removeFromAnimationListener();
+      }
+      cnt++;
+   }
+}
+</code></pre>
+<p>One node per animate frame. <strong>This is the load-bearing fact of the piece&#x27;s pacing.</strong> When the GPS sampled densely (stationary, 1–2 s apart), the parser dwelled. When sparsely (fast motion, 10–30 s apart), the parser raced. The piece&#x27;s rhythm is the GPS&#x27;s own attention rhythm, not a clock.</p>
+<h3 id="v-8-dateconvert-doaction-12-as">V.8 dateConvert (DoAction_12.as)</h3>
+<pre class="code" data-lang="text"><code>
+function dateConvert(time) {
+   t = new Date();
+   t.setYear(time.slice(0, 4));
+   t.setDate(time.slice(8, 10));
+   t.setHours(time.slice(11, 13));      // local TZ! see VII
+   t.setMinutes(time.slice(14, 16));
+   t.setSeconds(time.slice(17, 19));
+   t.setMonth(time.slice(5, 7) - 1);    // last (per the changelog fix)
+   return t;
+}
+</code></pre>
+<p><code>setHours()</code> in Flash 6 sets the local-timezone hour. The &quot;Z&quot; suffix on the GPX trkpt timestamp is silently dropped. On Even&#x27;s CEST-set machine, every UTC trkpt was reinterpreted as local CEST. The setMonth ordering is the one the 31 July 2004 changelog records as fixed.</p>
+<h3 id="v-9-shapes-and-sprites">V.9 Shapes and sprites</h3>
+<p>Five DEFINESHAPE bodies that matter:</p>
+<ul>
+<li><code>0003</code> minutefront — three-arm cross at offset (0.80, 0.75), grey</li>
+</ul>
+<p>stroke, hairline (twip-stored).</p>
+<ul>
+<li><code>0006</code> minute octagon — 8 vertices, line color #c40000, hairline.</li>
+<li><code>0009</code> hour cross — two-bar plus, line color #743636, hairline.</li>
+<li><code>0011</code> image_noalpha — rectangle outline 320 × 240, line color</li>
+</ul>
+<p>#dddddd, hairline.</p>
+<p>Sprite hierarchy:</p>
+<ul>
+<li><code>0001</code> innerCanvas — world-space, panned by CameraKeeper via</li>
+</ul>
+<p><code>_x = -xCoord</code>, <code>_y = -yCoord</code>.</p>
+<ul>
+<li><code>0002</code> imageCanvas — under innerCanvas, holds Image clips.</li>
+<li><code>0014</code> image — composite. Depth 1: outline shape 0011 placed at</li>
+</ul>
+<p>scale (1.0, 0.887) → 320 × 212.8 (the actual photo aspect). Depth 2: placeholder sprite 0013 placed with CXForm <code>mul a=0.1</code> (which doesn&#x27;t survive <code>loadMovie</code>, see VII).</p>
+<ul>
+<li><code>0021</code> &quot;centre&quot; — wraps innerCanvas at scale 0.5, position (203, 205).</li>
+<li><code>0020</code> display — text overlay at (13.10, 9.00), scale 0.619.</li>
+<li><code>0022</code> — the loop driver, fires <code>animationManager_tick</code> per frame.</li>
+</ul>
+<p>Sprite <code>0005</code> minutefront and <code>0008</code> minute carry CXForms (mul a=0.2 and mul a=0.5 respectively) — so the markers are permanently at 20% and 50% alpha on top of their hairline strokes.</p>
+<h3 id="v-10-constants-table">V.10 Constants table</h3>
+<p>Every numeric constant in the file:</p>
+<table>
+<thead><tr><th>Name</th><th>Value</th><th>Source</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td>Frame rate (declared)</td><td>120</td><td>swfdump header</td><td>Header value, not actual run rate</td></tr>
+<tr><td>mapWidth, mapHeight</td><td>500, 500</td><td>DoAction_16:28-29</td><td>Stage size</td></tr>
+<tr><td>clipIterator (initial)</td><td>1000</td><td>DoAction_16:27</td><td>Depth allocator base</td></tr>
+<tr><td><code>gLatScale</code></td><td>−800</td><td>DoAction_16:83</td><td>lat → projected y</td></tr>
+<tr><td><code>gLonScale</code></td><td>400</td><td>DoAction_16:84</td><td>lon → projected x</td></tr>
+<tr><td>CAMDRAWING / LOCALTIME / EXTENTS</td><td>0, 1, 2</td><td>DoAction_4:6-8</td><td>Camera state IDs</td></tr>
+<tr><td>CAMDRAWING spring K</td><td>1/40</td><td>DoAction_4:42-48</td><td>Stiffness</td></tr>
+<tr><td>CAMDRAWING spring damp</td><td>0.69</td><td>DoAction_4:44-52</td><td>Damping</td></tr>
+<tr><td>EXTENTS spring K</td><td>1/3</td><td>DoAction_4:63</td><td>Stiffness</td></tr>
+<tr><td>EXTENTS spring damp</td><td>0.59</td><td>DoAction_4:67-69</td><td>Damping</td></tr>
+<tr><td>Trail window slice</td><td>(-15, -1)</td><td>DoAction_4:38</td><td>Last 14 of 15 minutes</td></tr>
+<tr><td>CAMDRAWING scale ratio</td><td>90</td><td>DoAction_4:91</td><td>× mapW / bbox</td></tr>
+<tr><td>EXTENTS scale ratio</td><td>100</td><td>DoAction_4:94</td><td>× mapW / bbox</td></tr>
+<tr><td>Scale cap</td><td>2500 (v19); port runs 3800</td><td>DoAction_4:96</td><td>Maximum zoom (see §X.11 for the calibration that bumped this)</td></tr>
+<tr><td>TimeKeeper stiffness</td><td>4</td><td>DoAction_2:28</td><td>Damped spring constant</td></tr>
+<tr><td>TimeKeeper damping</td><td>0.1</td><td>DoAction_2:29</td><td>Velocity reduction</td></tr>
+<tr><td>New minute threshold</td><td>30000 ms</td><td>DoAction_5:39</td><td>Gap between minute markers</td></tr>
+<tr><td>Image scale base</td><td>3.5</td><td>DoAction_6:63</td><td>Floor for the bloom curve</td></tr>
+<tr><td>Image scale numerator</td><td>9,000,000</td><td>DoAction_6:63</td><td>Bloom magnitude</td></tr>
+<tr><td>Image timer per frame</td><td>1.2</td><td>DoAction_6:45</td><td>Fade ramp</td></tr>
+<tr><td>Image visible threshold</td><td>3</td><td>DoAction_6:46</td><td>Frame at which placeholder appears</td></tr>
+<tr><td>Image timer cap</td><td>100</td><td>DoAction_6:54</td><td>Where fade ends</td></tr>
+<tr><td>Placeholder CXForm a</td><td>0.1</td><td>swfdump:86</td><td>Doesn&#x27;t survive loadMovie</td></tr>
+<tr><td>Placeholder offset</td><td>(−160, −106.5)</td><td>DoAction_6:48-49</td><td>Photo centre</td></tr>
+<tr><td>centre sprite scale</td><td>0.5</td><td>swfdump</td><td>Implicit half-size on canvas</td></tr>
+<tr><td>centre sprite position</td><td>(203, 205)</td><td>swfdump</td><td>Stage placement</td></tr>
+<tr><td>display sprite scale</td><td>0.619</td><td>swfdump</td><td>Overlay scale</td></tr>
+<tr><td>display sprite position</td><td>(13.10, 9.00)</td><td>swfdump</td><td>Top-left overlay</td></tr>
+<tr><td>minutefront alpha</td><td>0.2</td><td>swfdump:33 (sprite 0005 CXForm)</td><td>Background layer alpha</td></tr>
+<tr><td>minute alpha</td><td>0.5</td><td>swfdump:50 (sprite 0008 CXForm)</td><td>Octagon alpha</td></tr>
+<tr><td>image y-scale</td><td>0.887</td><td>swfdump:83</td><td>Outline aspect (320 × 212.8)</td></tr>
+<tr><td>Front-layer depth offset</td><td>1500</td><td>DoAction.as:39</td><td>front=true offset</td></tr>
+</tbody>
+</table>
+</section>
+<section id="vi-the-port" data-title="VI. The port">
+<div class="shead"><h2>VI. The port</h2><div class="ctl" data-for="vi-the-port"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>The recreation is <code>index.html</code> at the project root. Single file, ~735 lines, vanilla JavaScript with <code>&lt;canvas&gt;</code>. No build, no dependencies. What it preserves:</p>
+<h3 id="vi-1-constants">VI.1 Constants</h3>
+<p>Every numeric in the SWF traced in. The port adds four constants the SWF didn&#x27;t have: <code>MAX_FINAL_SCALE = 80 × (SCALE_CAP/2500)</code> (a safety cap on the bloom that auto-tracks <code>SCALE_CAP</code>; see §VI.6 and §X.11), <code>PLAY_IN = 90</code> (frames of pre-rolled physics for the <code>?seek=</code> URL parameter), <code>SWF_FPS = 30</code> (empirical; the SWF header lies), and a <code>SCALE_CAP</code> override of 3800 vs the v19 literal 2500 (calibrated against the .mov; see §X.11).</p>
+<h3 id="vi-2-spring-math-ported-verbatim">VI.2 Spring math, ported verbatim</h3>
+<pre class="code" data-lang="js"><code>
+// CAMDRAWING — DoAction_4.as
+cam.vel.x += (cam.dest.x - cam.cur.x) * SPRING_K_CAM;   // / 40
+cam.vel.x *= SPRING_DAMP_CAM;                           // 0.69
+cam.cur.x += cam.vel.x;
+</code></pre>
+<pre class="code" data-lang="js"><code>
+// TimeKeeper — DoAction_2.as
+timeD += (dispT - targetT) * 4;
+timeD *= 0.1;
+if (isNaN(timeD)) timeD = 0;
+dispT -= timeD;
+</code></pre>
+<h3 id="vi-3-physics-tick-order-ported-verbatim">VI.3 Physics tick order, ported verbatim</h3>
+<p>The SWF&#x27;s <code>animationManager_tick</code> calls listeners in registration order. The JS replicates exactly:</p>
+<pre class="code" data-lang="js"><code>
+while (physicsAccum &gt;= SWF_FRAME_MS &amp;&amp; physicsTicks &lt; 8) {
+  physicsAccum -= SWF_FRAME_MS;
+  // (1) parser advances 1 trkpt
+  if (playing &amp;&amp; parserIdx &lt; allPts.length - 1) {
+    parserIdx += 1;
+    setT(allPts[parserIdx].t);
+  }
+  // (2) TimeKeeper damped spring
+  timeD += (dispT - targetT) * 4;
+  timeD *= 0.1;
+  dispT -= timeD;
+  // (3) Camera animate
+  camera.state = (parserIdx &gt;= allPts.length - 1) ? &#x27;EXTENTS&#x27; : &#x27;CAMDRAWING&#x27;;
+  cameraAnimate(camera, activeNow, bounds, SWF_W);
+  // (4) Photo timers (parser-time triggered)
+  for (const p of photos) {
+    if (targetT &gt;= p.t) p.timer = Math.min(100, p.timer + FADE_PER_SWF_FRAME);
+    else p.timer = 0;
+  }
+}
+</code></pre>
+<h3 id="vi-4-hairline-strokes">VI.4 Hairline strokes</h3>
+<p>The SWF stores stroke widths in twips (0.05 px = 1 twip = hairline). Flash renders hairlines as 1 screen pixel regardless of zoom. Canvas 2D has no hairline; the JS replicates by setting <code>lineWidth = 1 / current_transform_scale</code>, recomputing per draw call.</p>
+<h3 id="vi-5-z-order">VI.5 Z-order</h3>
+<p>Photos are drawn first, then minutes, then hours. This matches the SWF&#x27;s <code>clipIterator</code> depth ordering: in <code>addPoint</code>, an Image is attached before its Minute and Hour, so markers end up on higher depths and render on top. Required correction during the session once Timo noticed photos were sitting on top of markers in the recreation.</p>
+<h3 id="vi-6-the-bloom-math">VI.6 The bloom math</h3>
+<pre class="code" data-lang="js"><code>
+let photoScale = (3.5 + 9_000_000 / (dt + 1)) / 100;
+if (photoScale * k &gt; MAX_FINAL_SCALE) photoScale = MAX_FINAL_SCALE / k;
+</code></pre>
+<p><code>/ 100</code> because the SWF stored scale as a percent (the JS canvas transform expects a multiplier). The safety cap protects <code>drawImage</code> from absurd first-frame sizes; the natural curve at SWF&#x27;s 2500 scale cap shrinks rapidly enough that it&#x27;s invisible otherwise.</p>
+<h3 id="vi-7-what-the-port-adds-that-the-swf-didn-t-have">VI.7 What the port adds that the SWF didn&#x27;t have</h3>
+<ul>
+<li><strong>A scrub bar.</strong> The 2004 piece played start to end. The 2004 blog</li>
+</ul>
+<p>post itself wished for this in its closing paragraph (the Steenbeck reference). The JS adds a scrub control with <code>lastIndexBefore</code> searching for time lookup and <code>parserIdx</code> tracking in sync.</p>
+<ul>
+<li><strong><code>?seek=</code> and <code>?play=</code> URL parameters.</strong> Used for headless screenshots</li>
+</ul>
+<p>during the side-by-side video work. <code>?seek=N</code> jumps to a fraction of the trip and runs <code>PLAY_IN = 90</code> frames of simulated playback through the target so the camera spring is mid-transient at the rendered moment, not fully converged.</p>
+<ul>
+<li><strong>Hi-DPI canvas.</strong> A <code>devicePixelRatio</code> multiplier so the work is</li>
+</ul>
+<p>crisp on retina displays.</p>
+<ul>
+<li><strong><code>SWF_FPS = 30</code> empirical override.</strong> The header declares 120; the</li>
+</ul>
+<p>measured rate from the .mov is ~30.6.</p>
+<ul>
+<li><strong>Responsive container fill.</strong> The 500 × 500 SWF design size is</li>
+</ul>
+<p>preserved as the internal coordinate system, but the rendered canvas now fills its CSS container at any width. A <code>ResizeObserver</code> syncs the drawing buffer to <code>clientWidth × devicePixelRatio</code> on every resize so the artefact stays sharp on hosts wider than 500 px. SWF design units map to drawing-buffer pixels via a single <code>canvasScale = buf / SWF_W</code> factor that replaces the old hard-coded DPR multiply.</p>
+<ul>
+<li><strong>Iframe-host-aware styling.</strong> The body background is transparent</li>
+</ul>
+<p>so whichever host page (light or dark) shows through; the artefact canvas keeps its <code>#f9f8f6</code> warm-grey; play button and scrub bar use translucent greys (<code>rgba(128,128,128,0.20)</code> to <code>0.32</code>) that read on either a light or a dark host. A <code>?bg=white</code> URL parameter forces a white canvas background for headless screen-recording fairness (see §XV).</p>
+<ul>
+<li><strong>3 px stage corner rounding.</strong> A small <code>border-radius: 3px</code> on</li>
+</ul>
+<p>the stage and canvas softens the squareness without making the artefact read as a rounded UI element.</p>
+<h3 id="vi-8-what-the-swf-had-that-the-port-doesn-t">VI.8 What the SWF had that the port doesn&#x27;t</h3>
+<ul>
+<li><strong>LOCALTIME camera state.</strong> Defined but never used at runtime. Not</li>
+</ul>
+<p>ported; pointless.</p>
+<ul>
+<li><strong>Day primitive and <code>addDay()</code>.</strong> Constructor exists, never called.</li>
+</ul>
+<p>Not ported.</p>
+<ul>
+<li><strong><code>?noimages</code> mode.</strong> A degraded text-only version for slow Flash</li>
+</ul>
+<p>plugins. Not ported (the photos load fine in 2026).</p>
+<ul>
+<li><strong><code>?nocache=</code> cache busting.</strong> Not ported (HTTP caching is</li>
+</ul>
+<p>controlled by headers in 2026).</p>
+<ul>
+<li><strong>The empty <code>cameraManager()</code> function.</strong> Dead code that shipped.</li>
+</ul>
+<p>Not worth porting.</p>
+</section>
+<section id="vii-bugs-preserved-on-purpose-and-the-two-later-reverted" data-title="VII. Bugs preserved on purpose (and the two later reverted)">
+<div class="shead"><h2>VII. Bugs preserved on purpose (and the two later reverted)</h2><div class="ctl" data-for="vii-bugs-preserved-on-purpose-and-the-two-later-reverted"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>Six bugs in the original code were preserved in the port for archival fidelity. Each is documented in the <code>index.html</code> comments so the next reader doesn&#x27;t fix them.</p>
+<p>On 2026-05-09 (after the writeup first posted), two of the six were reverted: VII.1 (the lat/lon scale swap) and VII.2 (the GMT+0200 timezone label). Reasons and principle in §VII.7. Both reverts now shipped in <code>index.html</code>. Sections VII.1 and VII.2 below preserve the original analysis and add the post-revert state at the end of each.</p>
+<h3 id="vii-1-the-lat-lon-scale-swap-in-display">VII.1 The lat/lon scale swap in display</h3>
+<pre class="code" data-lang="as2"><code>
+// DoAction_5.as:24-25 (verbatim)
+_root.display._long = lon / gLatScale + &quot;N&quot;;
+_root.display._lat  = lat / gLatScale + &quot;W&quot;;
+</code></pre>
+<p>Both lines divide by <code>gLatScale</code> (−800). The <code>_long</code> line should divide by <code>gLonScale</code> (400). The result: longitude displays as <code>lon / -800</code> instead of <code>lon / 400</code>, producing a value of constant ratio −0.5 vs the true longitude. For Iceland (~−21°W), the displayed value is ~10.5°, labelled &quot;W&quot; — a &quot;mid-Atlantic&quot; reading.</p>
+<p>The label is also swapped between fields: <code>_long</code> gets &quot;N&quot; (a latitude cardinal); <code>_lat</code> gets &quot;W&quot; (a longitude cardinal). Two bugs on top of each other.</p>
+<p>The JS originally preserved both:</p>
+<pre class="code" data-lang="js"><code>
+ctx.fillText(trkpt.raw_lat.toFixed(6) + &#x27;N&#x27;, 14, 25);     // position of _long
+ctx.fillText((-trkpt.raw_lon).toFixed(6) + &#x27;W&#x27;, 104, 25);  // position of _lat
+</code></pre>
+<p><strong>Reverted 2026-05-09.</strong> The display now reads true latitude in the &quot;N&quot; field and true longitude in the &quot;W&quot; field, so a viewer reading the coordinates can map them to a real point in Iceland. The displayed value used to be ~10.5 °W (mid-Atlantic) regardless of where the trip actually was; the corrected display reads ~21.9 °W in the Reykjavík area, etc. See §VII.7 for the reversion criterion.</p>
+<h3 id="vii-2-the-gmt-0200-label-that-s-actually-wrong">VII.2 The &quot;GMT+0200&quot; label that&#x27;s actually wrong</h3>
+<p><code>dateConvert()</code> parses GPX <code>Z</code> strings as local CEST (Even&#x27;s machine). Then <code>Date.toString()</code> re-serialises with the player&#x27;s TZ label, which on Even&#x27;s CEST machine printed &quot;GMT+0200&quot;. The label has nothing to do with Iceland (which is GMT, no DST). It&#x27;s the SWF&#x27;s bug printed twice over.</p>
+<p>The JS originally preserved the label format. The underlying time variable is true UTC (verified by the Geysir test, see X.5).</p>
+<pre class="code" data-lang="js"><code>
+function fmtFlashDate(t) {
+   const d = new Date(t);   // true UTC, no shift
+   return DAYS[d.getUTCDay()] + &#x27; &#x27; + MONTHS[d.getUTCMonth()] + &#x27; &#x27; +
+          pad2(d.getUTCDate()) + &#x27; &#x27; + pad2(d.getUTCHours()) + &#x27;:&#x27; +
+          pad2(d.getUTCMinutes()) + &#x27;:&#x27; + pad2(d.getUTCSeconds()) +
+          &#x27; GMT+0200 &#x27; + d.getUTCFullYear();
+}
+</code></pre>
+<p><strong>Reverted 2026-05-09.</strong> The label now reads the actual UTC time in Iceland (which is on UTC year-round, no DST). The previous label asserted CEST, two hours ahead of the trip&#x27;s real local time; for anyone reading the clock to follow the trip — when did we leave Höfn, when did we reach Reykjavík — the label was actively misleading. The underlying time variable was always true UTC, so the change is a label-format change only, not a recomputation: <code>fmtFlashDate</code> now emits the suffix <code>GMT</code> instead of <code>GMT+0200</code>. See §VII.7 for the reversion criterion.</p>
+<h3 id="vii-3-the-squashed-projection">VII.3 The squashed projection</h3>
+<p><code>lat * -800</code> and <code>lon * 400</code> is not a map projection. It is a 2:1 horizontal squash of latitude relative to longitude. At Iceland&#x27;s ~64°N, a true Mercator projection would <em>expand</em> longitude (cos(64°) ≈ 0.44), not compress it. The piece&#x27;s distinctive look (a tall, vertically stretched Iceland) comes from this distortion.</p>
+<p>JS preserves: <code>x: lon * G_LON_SCALE; y: lat * G_LAT_SCALE</code> (line 117–118 of <code>index.html</code>).</p>
+<h3 id="vii-4-the-loadfinished-typo">VII.4 The <code>loadfinished</code> typo</h3>
+<pre class="code" data-lang="as2"><code>
+// DoAction_6.as:57 (verbatim)
+_loc1_.loadfinished = 0;     // lowercase &#x27;f&#x27;
+</code></pre>
+<p>The check at the top of the function uses the camelCase <code>loadFinished</code>. The reset at line 57 creates a <em>new</em> property <code>loadfinished</code> with a lowercase f. So the reset never actually fires. The timer keeps incrementing past 100. Flash silently clamps <code>_alpha</code> at 100, so the visible behaviour is correct, but the code has a broken state machine.</p>
+<p>The JS doesn&#x27;t replicate this exactly (it uses the cap <code>Math.min(100, p.timer + FADE_PER_SWF_FRAME)</code> directly), but the visible behaviour is identical: photo timer reaches 100 and stays there.</p>
+<h3 id="vii-5-the-dateconvert-setmonth-last-ordering">VII.5 The <code>dateConvert</code> setMonth-last ordering</h3>
+<pre class="code" data-lang="as2"><code>
+// DoAction_12.as:5-10
+t.setYear(time.slice(0, 4));
+t.setDate(time.slice(8, 10));   // BEFORE setMonth
+t.setHours(time.slice(11, 13));
+t.setMinutes(time.slice(14, 16));
+t.setSeconds(time.slice(17, 19));
+t.setMonth(time.slice(5, 7) - 1);   // LAST
+</code></pre>
+<p>This is the bug the 31 July 2004 changelog records as fixed: <em>&quot;error in flash in date object, month must be set last&quot;</em>. If you call <code>setDate(31)</code> while the Date object is in February, the day rolls over. The fix on the PC was to set month last, after day.</p>
+<p>Preserved as the literal AS2 logic. The JS uses <code>Date.UTC()</code> directly, which doesn&#x27;t have the bug, but the AS2&#x27;s order is recorded in the comments.</p>
+<h3 id="vii-6-the-variable-scope-leak-in-refocus">VII.6 The variable scope leak in <code>refocus</code></h3>
+<pre class="code" data-lang="as2"><code>
+// DoAction_4.as:114-140
+CameraKeeper.prototype.refocus = function(points) {
+   x1 = 0; y1 = 0; x2 = 0; y2 = 0;   // no var
+   i = 0;                              // no var
+   while (i &lt; points.length) {
+      x = points[i].getLongitude();   // no var
+      y = points[i].getLatitude();    // no var
+      ...
+   }
+};
+</code></pre>
+<p>Every variable leaks to the global scope. AS2 allowed this. Functionally harmless because nothing else uses these names at the global level. Characteristic of the era and worth recording.</p>
+<p>The JS port uses <code>let</code> everywhere (no leak).</p>
+<h3 id="vii-7-the-reversion-criterion-charm-vs-experience-cost">VII.7 The reversion criterion: charm vs experience-cost</h3>
+<p>VII.1 and VII.2 were preserved on the same logic as the others — this is what the original showed; reproducing it is part of the port&#x27;s archival fidelity. After living with the live page for a few days, Timo named the criterion that overruled that logic:</p>
+<blockquote>The clock at the top reads two hours later than it should, because that is the way the original showed it. The longitude reads as a value somewhere in the middle of the Atlantic, because that is the way the original showed it. I would like to change this, to correct the bugs, to make it more real. Should bugs be preserved? If they are charming, but not if they detract from our ability to experience something in the data.</blockquote>
+<p>The remaining preserved bugs all sit on the <em>charm</em> side:</p>
+<ul>
+<li><strong>VII.3 squashed projection.</strong> The 2:1 lat/lon ratio is the visual</li>
+</ul>
+<p>identity of the piece, the reason Iceland reads as a tall vertically-stretched form rather than a flat outline. Removing it produces a different artefact. Stays.</p>
+<ul>
+<li><strong>VII.4 <code>loadfinished</code> typo.</strong> Has no visible effect (Flash clamps</li>
+</ul>
+<p><code>_alpha</code> at 100). The typo is preserved as a code-comment record of the era; the JS doesn&#x27;t have the bug to begin with. Stays.</p>
+<ul>
+<li><strong>VII.5 <code>dateConvert</code> setMonth-last ordering.</strong> The comment in the</li>
+</ul>
+<p>changelog naming the fix is part of the artefact. JS uses <code>Date.UTC()</code> and doesn&#x27;t have the bug. Stays.</p>
+<ul>
+<li><strong>VII.6 <code>refocus</code> scope leak.</strong> Era-typical AS2 sloppiness, no</li>
+</ul>
+<p>visible effect. JS uses <code>let</code>. Stays.</p>
+<p>VII.1 and VII.2 sat on the <em>experience-cost</em> side. Both are values the viewer reads off the screen as part of <em>following the trip</em>: the clock answers &quot;what time is it on this trip?&quot;, the lat/lon answer &quot;where on the map are we?&quot;. Reading wrong values for both made the piece less legible <em>as a record of Iceland in July 2004</em>, which is what it is supposed to be a record of.</p>
+<p>The criterion generalises. Every preserved-bug call in software archaeology can be tested against: <em>does this bug add to the character of the original, or does it obstruct the thing the original was trying to communicate?</em> If character: keep it. If obstruction: revert it, and note the revert in the documentation (this section) and in the code (a comment at the call site). The original analysis stays in §VII.1 / §VII.2 above so a future reader can see the bug, see the call to preserve it, and see the call to revert it, in that order.</p>
+<p>The deeper point: archival fidelity to a piece of work is fidelity to <em>what the work was trying to do</em>, not to every byte of how it once did it. Bug-fidelity is a tactic, not the goal. When the tactic and the goal point opposite directions, the goal wins.</p>
+</section>
+<section id="viii-the-visual-arc-from-the-mov-frames" data-title="VIII. The visual arc (from the .mov frames)">
+<div class="shead"><h2>VIII. The visual arc (from the .mov frames)</h2><div class="ctl" data-for="viii-the-visual-arc-from-the-mov-frames"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>384 frames extracted from the QuickTime at 2 fps. The piece moves through six identifiable phases:</p>
+<ol>
+<li><strong>Loading (f001–f003).</strong> Empty white viewport. &quot;Loading image</li>
+</ol>
+<p>data... Loading gps data...&quot; text overlay.</p>
+<ol>
+<li><strong>First trkpts (f004–f014).</strong> Wide zoomed-out view. 1–5 small red</li>
+</ol>
+<p>ring markers begin to accumulate. No photos yet.</p>
+<ol>
+<li><strong>Bus from Keflavík (f015–f034).</strong> Trail builds rapidly across</li>
+</ol>
+<p>sparse landscape. Camera stays zoomed out. Few or no photos (Timo not actively shooting from the bus here).</p>
+<ol>
+<li><strong>Reykjavík walk and stops (f035–f095).</strong> Camera tightens to</li>
+</ol>
+<p>max zoom. Multiple photos blooming at once, layered with semi-translucent appearance. Markers form a thick cluster cutting across the photo stack. This is the dense, busy section the work is most known for.</p>
+<ol>
+<li><strong>Cross-country highlands and Geysir (f096–f160).</strong> Camera oscillates</li>
+</ol>
+<p>between tight (at stops, including the 32-min Geysir pause) and loose (during fast bus segments). Photos appear, bloom, recede. Trail snakes across the screen.</p>
+<ol>
+<li><strong>EXTENTS pull-back (f175–f192).</strong> Camera zooms out to show the</li>
+</ol>
+<p>entire 5-day route as a delicate net of small markers across Iceland. Photos vanish. The full shape of the trip becomes visible at once.</p>
+<p>Photo lifecycle visible across the frames: appear bloomed huge and pixelated, shrink rapidly through the first 1–2 seconds, settle to viewport-ish at 2–3 seconds, continue to shrink to small frame-sized stills at 10+ seconds, eventually disappear when the camera reframes.</p>
+<p>Markers consistently sit on top of photos. Their colour and weight are constant; the trail accumulates without any element fading out.</p>
+<p>The .mov is the only continuous record of all of this. The session spent considerable time on side-by-side comparison videos (<code>_Documentation/comparison_*.mp4</code>) precisely because no static description can capture the spring transient mid-motion.</p>
+</section>
+<section id="ix-the-chronology-in-eight-commits" data-title="IX. The chronology, in eight commits">
+<div class="shead"><h2>IX. The chronology, in eight commits</h2><div class="ctl" data-for="ix-the-chronology-in-eight-commits"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<table>
+<thead><tr><th>Commit</th><th>Time</th><th>Move</th></tr></thead>
+<tbody>
+<tr><td><code>43ebcc9</code></td><td>2026-05-08 23:46</td><td>Working baseline. SWF mechanics, hairline strokes, trkpt-paced playback hint, alpha cap at 0.35, 25 fps tick, .mov sync mapping. First commit ever in the project.</td></tr>
+<tr><td><code>94e6170</code></td><td>2026-05-08 23:52</td><td>Tick rate moved to 30 fps. TimeKeeper spring ported verbatim from <code>DoAction_2.as</code>. Parser advance moved into the physics tick. Fade rate corrected to 1.2/frame. Total playback now matches the .mov within 3 seconds.</td></tr>
+<tr><td><code>d3e1719</code></td><td>2026-05-08 23:56</td><td>Photo alpha cap raised from 0.35 to 1.0 after re-reading the CXForm semantics.</td></tr>
+<tr><td><code>8a8eb23</code></td><td>2026-05-09 00:01</td><td>Track .mov via Git LFS.</td></tr>
+<tr><td><code>6229549</code></td><td>2026-05-09 00:01</td><td>Move <code>_archive_2004/time_land_forgot.mov</code> into LFS.</td></tr>
+<tr><td><code>2fe9814</code></td><td>2026-05-09 00:03</td><td>README.md written. .mov link rewritten to GitHub LFS-rendered URL because Pages doesn&#x27;t proxy LFS.</td></tr>
+<tr><td><code>f7d73f8</code></td><td>2026-05-09 00:08</td><td>Display labels reverted to match the SWF&#x27;s literal &quot;GMT+0200&quot; output for honesty about what the original showed.</td></tr>
+<tr><td><code>d008383</code></td><td>2026-05-09 00:14</td><td><code>?seek=</code> plays in for 90 trkpts before target, preserving the camera spring transient for screenshot comparisons.</td></tr>
+</tbody>
+</table>
+</section>
+<section id="x-the-audit-chain" data-title="X. The audit chain">
+<div class="shead"><h2>X. The audit chain</h2><div class="ctl" data-for="x-the-audit-chain"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>Each finding, with its source, the test that surfaced it, and the fix.</p>
+<h3 id="x-1-the-120-fps-lie">X.1 The 120 fps lie</h3>
+<ul>
+<li>Found in: SWF header (<code>Frame rate: 120.000000</code>).</li>
+<li>Initial port took at face value.</li>
+<li>Disagreement: a 5-day trip at 120 trkpts/sec finishes in 49</li>
+</ul>
+<p>seconds; the .mov is 192 seconds.</p>
+<ul>
+<li>Test: count trkpts (5,869), divide by .mov runtime (192). Result:</li>
+</ul>
+<p>30.6 trkpts/sec.</p>
+<ul>
+<li>Confirmation: every spring constant in the file (<code>*= 0.69</code>,</li>
+</ul>
+<p><code>*= 0.59</code>, <code>*= 0.1</code>) is critically damped at 30 Hz, overdamped at 120 Hz. They were calibrated for the lower rate.</p>
+<ul>
+<li>Fix: <code>SWF_FPS = 30</code> with a fixed-timestep accumulator. Total</li>
+</ul>
+<p>playback 195 s (vs .mov&#x27;s 192 s). Commit <code>94e6170</code>.</p>
+<h3 id="x-2-the-timekeeper-damped-spring">X.2 The TimeKeeper damped spring</h3>
+<ul>
+<li>Found in: <code>DoAction_2.as:23-35</code>.</li>
+<li>Initial port: first-order ease (<code>dispT += (targetT - dispT) * 0.35</code>).</li>
+<li>Disagreement: the .mov shows the camera carrying momentum and</li>
+</ul>
+<p>overshooting the target on settle; the first-order ease just glides in.</p>
+<ul>
+<li>Test: derive the steady-state lag of each. AS2 spring lags 17.5</li>
+</ul>
+<p>trip-seconds at the SWF&#x27;s per-frame trkpt advance; first-order ease lags ~5 seconds.</p>
+<ul>
+<li>Fix: port the AS2 spring verbatim, including the <code>isNaN</code> guard.</li>
+</ul>
+<p>Commit <code>94e6170</code>.</p>
+<h3 id="x-3-the-cxform-a-0-1-rabbit-hole">X.3 The CXForm <code>a=0.1</code> rabbit hole</h3>
+<p>The longest thread of the session. The placeholder layer (sprite 0013 inside sprite 0014) carries a CXForm <code>mul a=0.1</code> in its placement matrix. Read literally, this caps every photo at 10% alpha.</p>
+<p>The cap was changed seven times before settling:</p>
+<table>
+<thead><tr><th>Pass</th><th>Cap</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>0.10</td><td>Literal CXForm reading. Photos almost invisible.</td></tr>
+<tr><td>2</td><td>0.35</td><td>Compromise.</td></tr>
+<tr><td>3</td><td>0.55</td><td>&quot;Layered see-through where they stack.&quot;</td></tr>
+<tr><td>4</td><td>0.85</td><td>Re-reading <code>loadMovie</code> semantics.</td></tr>
+<tr><td>5</td><td>0.30</td><td>Tighter for overlap translucency.</td></tr>
+<tr><td>6</td><td>0.20</td><td>&quot;Closer to .mov perceived alpha.&quot;</td></tr>
+<tr><td>7</td><td>1.00</td><td>Final. The CXForm was on the <em>empty</em> placeholder; <code>loadMovie</code> replaces the clip&#x27;s contents and (per Flash 6 behaviour) does not preserve the placement transform. So at <code>timer=100</code> the photo is fully opaque.</td></tr>
+</tbody>
+</table>
+<p>The layered see-through effect in the .mov is <em>size disparity</em>, not transparency: new photos bloom huge, old ones shrink to small frames behind. Stacks read as translucent because each layer is small and opaque against the opaque layer beneath. Commit <code>d3e1719</code>.</p>
+<h3 id="x-4-the-tz-shift-attempt-and-reversal">X.4 The TZ shift attempt and reversal</h3>
+<ul>
+<li>Symptom: .mov clock labels are 2 hours earlier than corresponding</li>
+</ul>
+<p>GPX UTC timestamps.</p>
+<ul>
+<li>First hypothesis: shift both EXIF and GPX by −2 hours so the</li>
+</ul>
+<p>displayed clock matches the .mov.</p>
+<ul>
+<li>Timo&#x27;s correction: *&quot;I&#x27;m sure the camera was set exactly to local</li>
+</ul>
+<p>time, that can be a source of truth.&quot;*</p>
+<ul>
+<li>Resolution: the .mov&#x27;s labels are the SWF&#x27;s bug, not the truth.</li>
+</ul>
+<p>Camera was UTC. Display label kept matching .mov format (&quot;GMT+0200&quot;) for side-by-side comparison; underlying time variable is true UTC. Commit <code>f7d73f8</code>.</p>
+<h3 id="x-5-the-geysir-empirical-test">X.5 The Geysir empirical test</h3>
+<p>The conclusive test for camera time origin. Process:</p>
+<ul>
+<li>Detect every long pause in the GPX (camera stationary, tightly</li>
+</ul>
+<p>clustered trkpts). 55 pauses found at &gt;5 minutes.</p>
+<ul>
+<li>One pause is unmistakable: Sat 3 July 2004, 12:30–13:02 UTC, lat</li>
+</ul>
+<p>64.31313, lon −20.29741. Geysir, the original geyser.</p>
+<ul>
+<li>Find photos with EXIF stamps inside that window under each TZ</li>
+</ul>
+<p>hypothesis. Look at what they show.</p>
+<ul>
+<li>Under EXIF-as-UTC: 5 photos in window. All Geysir-content (warning</li>
+</ul>
+<p>sign, person crouching by steaming pool, tourists with cameras, steaming geothermal pool with calcified rock). Photo IDs: DSC02713, DSC02732, DSC02736, DSC02748.</p>
+<ul>
+<li>Under EXIF +2h: 153 photos before GPX even starts; median speed</li>
+</ul>
+<p>for in-range photos is 5 km/h (i.e. many appear to be from moving vehicles, implausible for composed shots).</p>
+<p>Camera was UTC. Confirmed. The wider statistical check: 144 of 241 photos at walking/still speed (median 1.9 km/h) under EXIF-as-UTC.</p>
+<p>This is the kind of test Claude proposes and executes (pause detection, intersection, statistics). The recognition step (&quot;that is Geysir&quot;) needs Timo or someone with geographic priors.</p>
+<h3 id="x-6-the-lat-lon-swap-by-map-shape-audit">X.6 The lat/lon swap, by map-shape audit</h3>
+<ul>
+<li>Symptom: .mov displays &quot;10.95W&quot; longitude at a moment when GPX</li>
+</ul>
+<p>shows −21.88.</p>
+<ul>
+<li>First hypothesis: .mov used a different (fuller) GPX containing the</li>
+</ul>
+<p>trans-Atlantic flight, hence &quot;mid-Atlantic&quot; longitudes.</p>
+<ul>
+<li>Test: compare lat and lon at the same instant. Latitudes are</li>
+</ul>
+<p>byte-identical. Longitudes are related by a constant: −21.88 × −0.5 = 10.94. Constant ratio means same data through a buggy formula, not different data.</p>
+<ul>
+<li>Bytecode confirms: <code>display._long = lon / gLatScale + &quot;N&quot;</code>.</li>
+</ul>
+<p><code>gLatScale</code> is −800; <code>gLonScale</code> is 400. The division by the wrong scale produces the constant ratio.</p>
+<p>No mythical fuller GPX. Same Iceland data, displayed wrong.</p>
+<h3 id="x-7-trkpt-paced-playback-the-alive-unlock">X.7 Trkpt-paced playback (the &quot;alive&quot; unlock)</h3>
+<ul>
+<li>Symptom: the recreation felt mechanical; the .mov &quot;looks alive&quot;</li>
+</ul>
+<p>during stops.</p>
+<ul>
+<li>Mechanism in AS2 (<code>AnimParser.animate</code>, <code>DoAction_14.as:15-30</code>):</li>
+</ul>
+<p>one trkpt per animate frame, regardless of timestamps. Pacing shaped entirely by GPS sampling density.</p>
+<ul>
+<li>Stops: GPS samples densely (every 1–2 s), parser dwells, camera</li>
+</ul>
+<p>spring settles, photos bloom.</p>
+<ul>
+<li>Motion: GPS samples sparsely (every 10–30 s), parser races,</li>
+</ul>
+<p>camera struggles to keep up, photos pass quickly.</p>
+<ul>
+<li><strong>The hidden second consequence: empty time disappears.</strong> The 2004</li>
+</ul>
+<p>GPX has overnight gaps where the GPS was switched off. Walking the array, those gaps take zero frames; the parser just steps over them. The 2004 blog post named this directly: <em>&quot;There will be discontinuities in the tracklogs as the GPS is switched off during standstill and nights. Currently the system smoothes tracklog time to make breaks seem more like quick transitions.&quot;</em> The first port advanced time linearly across the calendar, which meant overnight gaps became long boring stretches with photographs sitting unchanged for tens of seconds while nothing happened. The trkpt-paced advance fixed both problems with one move: stops dwell, empty time disappears.</p>
+<ul>
+<li>Initial port used a fixed linear advance (3 min for whole trip).</li>
+</ul>
+<p>Compressed Geysir&#x27;s 32-minute stop into 1.5 real seconds and inflated overnight nothing into ten seconds of static screen.</p>
+<ul>
+<li>Fix: <code>parserIdx += 1</code> per physics tick. 5,869 trkpts / 30 fps =</li>
+</ul>
+<p>195 s, matches .mov&#x27;s 192 s. Stops dwell, motion races, nights vanish. Commit <code>94e6170</code>.</p>
+<ul>
+<li>Surfaced after publication by Even Westvang reading the writeup:</li>
+</ul>
+<p><em>&quot;Interesting that Claude&#x27;s first pass was just a very ordinary photo + gpx track rendering and had lots of long overnight pauses. Boring indeed.&quot;</em> The &quot;boring overnight pauses&quot; half is the half this section originally underplayed. Folded in here.</p>
+<h3 id="x-8-marker-z-order">X.8 Marker z-order</h3>
+<ul>
+<li>Found by Timo&#x27;s eye: *&quot;looks to me like the circles and crosshairs</li>
+</ul>
+<p>are on top of the photos in the original.&quot;*</p>
+<ul>
+<li>Source in AS2: <code>TrackKeeper.addPoint</code> creates Image first, then</li>
+</ul>
+<p>Minute, then Hour. <code>clipIterator</code> depth ordering means later-attached clips have higher depths.</p>
+<ul>
+<li>First port drew photos last (on top). Fix: draw photos first,</li>
+</ul>
+<p>markers second.</p>
+<h3 id="x-9-the-seek-converge-regression-and-the-bbox-snap-fix-that-came-after">X.9 The seek-converge regression (and the bbox-snap fix that came after)</h3>
+<ul>
+<li>Symptom: screenshot comparison videos showed the recreation</li>
+</ul>
+<p>artificially still at every captured frame, while the .mov captured dynamic mid-motion frames.</p>
+<ul>
+<li>Root cause: the <code>?seek=</code> parameter ran 200 ticks of camera spring</li>
+</ul>
+<p>physics to converge before rendering. Result: zero spring transient.</p>
+<ul>
+<li>Fix: replace converge with play-in. Seek lands 90 trkpts before</li>
+</ul>
+<p>target, settles photo timers at that earlier point, then simulates 90 frames of real playback through the target. Camera spring mid-transient at the rendered moment. Commit <code>d008383</code>.</p>
+<p>A second symptom emerged later, while sweeping <code>SCALE_CAP</code> across the timeline (see §X.11): the seek-mode screenshots reported the camera bbox as ~2.5× wider than its destination value at the rendered moment. The .mov, in continuous playback, had had minutes of physics to settle the bbox spring; my 90-frame play-in could not match that from a cold seek-jump start. So every screenshot comparison until then had been measuring transient spring state, not converged state, and any conclusion drawn about visual scale was suspect. Fix: snap <code>cur</code> to <code>dest</code> at the end of the seek&#x27;s play-in (bbox + main camera + zero velocities). Live playback is unaffected; only the headless screenshot path lands in a converged state matching the .mov. Commit <code>cb90d7d</code>.</p>
+<h3 id="x-10-words-that-did-unjustified-work">X.10 Words that did unjustified work</h3>
+<ul>
+<li><em>&quot;matches closely&quot;</em>, <em>&quot;broadly similar&quot;</em>, <em>&quot;roughly&quot;</em> in Claude</li>
+</ul>
+<p>summaries.</p>
+<ul>
+<li>Timo&#x27;s correction: <em>&quot;these words are doing a lot of work.&quot;</em></li>
+<li>Lesson for archaeology: only verifiable matches count. Either two</li>
+</ul>
+<p>frames are the same or they are not. Closely is doing work.</p>
+<h3 id="x-11-scale-cap-recalibration-2500-3800">X.11 SCALE_CAP recalibration (2500 → 3800)</h3>
+<ul>
+<li>Symptom: the recreation felt more zoomed-out than the .mov during</li>
+</ul>
+<p>walking-speed phases. Markers and photographs read smaller than in the .mov panel of the side-by-side, especially in dense Reykjavík/Geysir clusters.</p>
+<ul>
+<li>Diagnosis required X.9&#x27;s bbox-snap fix first, otherwise every</li>
+</ul>
+<p>screenshot comparison was reading transient spring state and the symptom got mis-attributed.</p>
+<ul>
+<li>Method: parameter sweep across 8 timeline moments × 4 caps</li>
+</ul>
+<p>(2500/3200/3800/4500), captured headlessly with the bbox-snap applied. Walking-phase moments (m150 pegs, m185 tile, etc.) were the fair-comparison set; moments where the .mov was mid-TimeKeeper fast-forward were excluded because the panels disagreed on which moment they were rendering, not on scale.</p>
+<ul>
+<li>Result: cap = 3800 sat consistently closest to the .mov on the</li>
+</ul>
+<p>walking-phase set. cap = 2500 (v19&#x27;s value) felt zoomed-out. cap = 4500 felt zoomed-in.</p>
+<ul>
+<li>Hypothesis: v19 lowered the cap from an earlier SWF iteration.</li>
+</ul>
+<p>The .mov was screen-recorded against an earlier SWF whose cap was closer to 3800. The disassembly we have is v19, which is why the literal value in §V.10 is 2500 and the port runs 3800.</p>
+<ul>
+<li>Bloom-cap follow-on: <code>MAX_FINAL_SCALE</code> is set as</li>
+</ul>
+<p><code>80 × (SCALE_CAP / 2500)</code> so the bloom→settle dynamic stays smooth at any cap (see §VI.6). At 3800 this resolves to ~122.</p>
+<ul>
+<li>Commit <code>cace6db</code>.</li>
+</ul>
+<p>The SCALE_CAP=3800 is the second non-SWF-faithful constant in the port, after the +15 % marker bump in §XV.5. Both are flagged in the code as side-by-side rig calibrations rather than fidelity claims.</p>
+</section>
+<section id="xi-what-claude-got-wrong-on-first-pass" data-title="XI. What Claude got wrong on first pass">
+<div class="shead"><h2>XI. What Claude got wrong on first pass</h2><div class="ctl" data-for="xi-what-claude-got-wrong-on-first-pass"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>Twelve items, in order of session:</p>
+<ol>
+<li>The whole aesthetic. First port was a dark Leaflet &quot;tool&quot; page.</li>
+</ol>
+<p>Should have been a 500 × 500 white viewport with hand-drawn primitives.</p>
+<ol>
+<li>Frame rate (taken from header).</li>
+<li>Photo opacity (seven passes; misread <code>loadMovie</code> semantics).</li>
+<li>Camera time origin (assumed UTC because Iceland is GMT, then</li>
+</ol>
+<p>proposed CEST shift).</p>
+<ol>
+<li>Display label (initially showed true UTC+2; reverted to the</li>
+</ol>
+<p>buggy SWF format for side-by-side parity).</p>
+<ol>
+<li>Lat/lon swap explanation (almost accepted &quot;different GPX&quot;</li>
+</ol>
+<p>hypothesis before constant-ratio test undid it).</p>
+<ol>
+<li>Photo activation timing (<code>dispT &gt;= photo.t</code> instead of <code>targetT &gt;= photo.t</code>).</li>
+<li>Marker z-order (drew markers underneath photos).</li>
+<li>Photo bloom cap (60 → 2 → 5 → 100 → 80). 100 hid the</li>
+</ol>
+<p>first-frame absurdity but produced a visible step-down where the natural curve later crossed under the cap — photos sat at the cap for ~80 s of trip-time then suddenly shrank, most legible in the dense Reykjavík sequence. 80 puts the cap at the curve&#x27;s value at the first post-activation tick so the two agree at that moment and the bloom decays smoothly. See XV.4.</p>
+<ol>
+<li><code>SCALE_CAP</code> (bumped from 2500 to 5000 then back).</li>
+<li>Seek-to-converge (killed the camera spring transient).</li>
+<li>&quot;Matches closely&quot; as a description.</li>
+</ol>
+<p>Each was caught only because something <em>else</em> on disk disagreed: the .mov, the GPX cluster at Geysir, the constant ratio in the longitude display, the photographs themselves, or Timo&#x27;s eye.</p>
+</section>
+<section id="xii-what-only-timo-could-do" data-title="XII. What only Timo could do">
+<div class="shead"><h2>XII. What only Timo could do</h2><div class="ctl" data-for="xii-what-only-timo-could-do"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>Six things:</p>
+<ol>
+<li><strong>Decide what the work is.</strong> &quot;Tool&quot; or &quot;film&quot;. The choice</li>
+</ol>
+<p>reframed everything that followed. Not in any file.</p>
+<ol>
+<li><strong>Decide what counts as character.</strong> The lat/lon swap and the</li>
+</ol>
+<p>wrong clock label are bugs. Whether to fix them or preserve them is an authorial decision. Timo&#x27;s instruction was &quot;preserve&quot;. With &quot;fix&quot; the recreation would be a different artefact entirely.</p>
+<ol>
+<li><strong>Recognise Geysir from the photographs.</strong> Five JPEGs of warning</li>
+</ol>
+<p>signs and steam, taken in 2004 by Timo, are recognisable to him as Geysir on sight. Claude can describe each frame; it cannot assert &quot;that is Geysir&quot; without geographic priors and tourist iconography it doesn&#x27;t carry.</p>
+<ol>
+<li><strong>Tie-break on feel.</strong> &quot;Does the spring look right?&quot; &quot;Are the</li>
+</ol>
+<p>photos appearing fast enough?&quot; &quot;Why does the new one feel static?&quot; Watching the .mov and the recreation side by side, deciding &quot;yes, that is the same&quot;, is taste. Claude can produce the comparison; Timo decides when it is done.</p>
+<ol>
+<li><strong>Push back on confident-sounding wrong readings.</strong> &quot;I&#x27;m sure</li>
+</ol>
+<p>the camera was set to local time.&quot; &quot;Don&#x27;t dodge the question.&quot; &quot;These words are doing a lot of work.&quot; The push-back was load-bearing in at least three places.</p>
+<ol>
+<li><strong>Bring memory of the trip.</strong> &quot;We stopped at a hot spring and</li>
+</ol>
+<p>jumped in.&quot; &quot;Many photos were taken on a bus.&quot; &quot;A long walk in Reykjavik.&quot; These are the constraints any GPS+photo correlation has to satisfy.</p>
+</section>
+<section id="xiii-ten-things-to-keep-in-mind-for-the-next-archaeology" data-title="XIII. Ten things to keep in mind for the next archaeology">
+<div class="shead"><h2>XIII. Ten things to keep in mind for the next archaeology</h2><div class="ctl" data-for="xiii-ten-things-to-keep-in-mind-for-the-next-archaeology"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<ol>
+<li>The disassembler tool exists; use it before guessing.</li>
+<li>A continuous video record of the original running is worth a</li>
+</ol>
+<p>thousand static screenshots.</p>
+<ol>
+<li>Header values can lie. Measure the real one from the artefact.</li>
+<li>CXForms and other &quot;applied to the empty container&quot; transforms</li>
+</ol>
+<p>are easy to misread. Read the runtime semantics, not just the placement structure. Try the literal reading and the runtime reading both, and compare each against the .mov.</p>
+<ol>
+<li>Time zones in pre-IETF-era code were often parsed as local</li>
+</ol>
+<p>without notice. Don&#x27;t trust the player&#x27;s clock label.</p>
+<ol>
+<li>Camera EXIF time settings are a separate question from the</li>
+</ol>
+<p>GPS UTC; never assume.</p>
+<ol>
+<li>Use <em>content</em> in the photographs as ground-truth landmarks</li>
+</ol>
+<p>against the GPS (the Geysir test).</p>
+<ol>
+<li>Pacing data structures by index rather than by time was once</li>
+</ol>
+<p>common. Don&#x27;t resample on the way in; honour the original cadence.</p>
+<ol>
+<li>Bugs preserved on purpose need a sentence of prose somewhere</li>
+</ol>
+<p>visible (README, page footer, code comment). Otherwise the next reader fixes them.</p>
+<ol>
+<li>The author&#x27;s recollection of <em>which moment felt right</em> is a</li>
+</ol>
+<p>primary source. Capture it in writing while there&#x27;s still someone who remembers.</p>
+</section>
+<section id="xiv-what-this-archaeology-actually-was" data-title="XIV. What this archaeology actually was">
+<div class="shead"><h2>XIV. What this archaeology actually was</h2><div class="ctl" data-for="xiv-what-this-archaeology-actually-was"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>It was not a port of one binary to another. It was a sequence of hypotheses run against three corroborating sources — the bytecode, the screen-recording, and the author&#x27;s memory — where the author was present and willing to push back. Every hypothesis that survived was the one that satisfied all three. Every hypothesis that died, died because two of the three disagreed.</p>
+<p>The medium for the conversation was a terminal, a browser open to localhost, and Timo at the keyboard. The medium for the work itself remained what it always was: a 500 × 500 viewport in a browser, white background, photographs blooming on a GPS trail in Iceland in July</p>
+<ol>
+<li>That part didn&#x27;t change. Only the path back to it did.</li>
+</ol>
+<p>The 2004 closing paragraph asked for a Steenbeck. The 2026 recreation has a scrub bar. The wish in the original made it into the restoration, twenty-two years later.</p>
+</section>
+<section id="xv-the-side-by-side-harness-in-thirteen-iterations" data-title="XV. The side-by-side harness, in thirteen iterations">
+<div class="shead"><h2>XV. The side-by-side harness, in thirteen iterations</h2><div class="ctl" data-for="xv-the-side-by-side-harness-in-thirteen-iterations"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>Halfway through the session the pattern of &quot;make a guess, ask Timo, get correction, iterate&quot; stopped scaling. Timo&#x27;s questions were getting sharper than the available evidence. The fix was a side-by-side comparison harness: render the .mov on the left, render the recreation at the matching parser-time on the right, composite to MP4 and GIF, look at frames side-by-side. Once the harness existed, every audit collapsed from &quot;judge by feel&quot; to &quot;look at the divergent pixels&quot;.</p>
+<p>The harness itself took thirteen iterations to get right. Recorded here because the bugs in the harness are themselves instructive, and because the iteration is preserved on disk as <code>_Documentation/comparison_*.{mp4,gif}</code>.</p>
+<table>
+<thead><tr><th>Version</th><th>Bug</th><th>Fix</th><th>File</th></tr></thead>
+<tbody>
+<tr><td><code>side_by_side</code> (v2)</td><td>Photo opacity capped at 0.35 (literal CXForm reading); seek-by-array-index gave drift</td><td>First baseline; useful only as a &quot;this is wrong&quot; reference</td><td><code>comparison_side_by_side.{mp4,gif}</code></td></tr>
+<tr><td><code>v3_swf_exact</code></td><td>Capture interrupted at f023 (server died)</td><td>Partial; only 22 frames</td><td><code>comparison_v3_swf_exact.{mp4,gif}</code></td></tr>
+<tr><td><code>v5</code></td><td><code>parserIdx = floor(f × N)</code> mapping. Trkpts cluster densely at stops, so high-fraction lookups landed in dense regions and reported a much later time than the time-fraction implied. Drift up to 6 hours mid-trip.</td><td>Replaced index-based seek with <code>bisect_by_time</code> over the full GPX</td><td><code>comparison_v5.{mp4,gif}</code></td></tr>
+<tr><td><code>v6</code></td><td>Captured half before the bisect fix, half after</td><td>Re-render</td><td><code>comparison_v6.{mp4,gif}</code></td></tr>
+<tr><td><code>v7</code></td><td>Display-time was 2 hours off because <code>fmtFlashDate</code> still added the +2h CEST shift</td><td>Dropped the shift; matched the SWF&#x27;s literal Z-text-as-CEST format</td><td><code>comparison_v7.{mp4,gif}</code></td></tr>
+<tr><td><code>v8</code></td><td>Mac was on PDT; Python&#x27;s <code>datetime.utcfromtimestamp</code> interpreted naive timestamps as Pacific local, shifting all OCR&#x27;d times by 7 hours. Anchor table was off by hours.</td><td>Wrap all timestamp arithmetic in explicit UTC</td><td><code>comparison_v8.{mp4,gif}</code></td></tr>
+<tr><td><code>v9</code></td><td>All previous bugs fixed. Display read eased-time, parser advanced on parser-time, so the timestamp shown to the viewer was a fraction of a second behind the trail-state being drawn — the photo and the label were describing different moments</td><td><code>drawDisplay()</code> now reads <code>allPts[parserIdx]</code> not <code>nearestPoint(allPts, dispT)</code></td><td><code>comparison_v9.{mp4,gif}</code></td></tr>
+<tr><td><code>v10</code></td><td>Headless-seek capture only ever showed steady-state frames. Spring transients (camera settling, photo bloom decay, marker chase during fast motion) were never visible side-by-side.</td><td>Switched from per-frame seek to recording the live page playing through, then OCR-matching recording frames to .mov frames by displayed timestamp</td><td><code>comparison_v10.{mp4,gif}</code></td></tr>
+<tr><td><code>v10_strict</code></td><td>Showed only frames with an exact-time match (within 1 trip-minute), blank-bg on the right otherwise. Confirmed only 36 of 192 .mov frames had a strictly-matched recording frame; the recreation runs ~5% slower than the .mov under screen-recording load</td><td>Kept as a reference for &quot;how much is genuine match vs interpolation&quot;; not the build to watch</td><td><code>comparison_v10_strict.{mp4,gif}</code></td></tr>
+<tr><td><code>v11</code></td><td>Recording done on the warm-grey artefact background, which doubled the right-panel contrast against the .mov&#x27;s white</td><td>Added a <code>?bg=white</code> URL param that overrides the artefact bg for screen-recording only, leaving the live page palette intact</td><td><code>comparison_v11.{mp4,gif}</code></td></tr>
+<tr><td><code>v12_allframes</code></td><td>1 fps composite hid the spring transients we&#x27;d just exposed. Visible &quot;pauses&quot; came from OCR misses repeating the same recreation frame against many .mov frames</td><td>Extracted both sources at native frame rate (mov 25 fps, recording 30 fps), interpolated rec-frame timestamps between OCR&#x27;d anchors, matched all 4803 .mov frames to nearest rec frame</td><td><code>comparison_v12_allframes.{mp4,gif}</code></td></tr>
+<tr><td><code>v13_allframes</code></td><td>Marker octagons in the recreation read smaller than in the .mov side panel, because the .mov was screen-recorded at native 478 px and the side-by-side upsamples it to 500. The recreation rendered at native 500 retina, no upsample, so its design-unit primitives looked subtly smaller</td><td>Bumped the octagon design size +15 % (the only constant in the port that doesn&#x27;t match the SWF byte-for-byte; flagged in code as a recording-rig compensation, not a fidelity fix). Re-OCR&#x27;d the longer 215 s recording for better anchor coverage (211/215 frames). 3744 unique rec frames matched into 4803 mov frames</td><td><code>comparison_v13_allframes.{mp4,gif}</code></td></tr>
+</tbody>
+</table>
+<p>v13 is the canonical synced version, superseding v9. The earlier &quot;canonical&quot; claim about v9 was true only for headless-seek capture — once we wanted to see actual spring transients, the seek-based approach had to go.</p>
+<p>The remaining differences between v13&#x27;s two panels are small in pixel terms and load-bearing in experiential terms. They are not &quot;polish-level&quot; residuals; they are the part of the work that decides whether the recreation feels like the original or feels like a diagram of it.</p>
+<p>Photo lead/lag. The SWF used <code>loadMovie</code> async, so a photo&#x27;s appearance is gated by network/cache latency from 2004 — the image <em>arrives</em>, with the small flicker of arrival. The recreation pre-caches everything and shows photos instantly on activation. In pixel-diff terms this is a phase shift of fractions of a second; in felt terms it removes the sense that the trip is being re-discovered as it plays, and replaces it with the sense that everything is pre-known. Open. Worth fixing by introducing a synthetic short delay on activation, or by reading the SWF&#x27;s actual load-order and honouring it.</p>
+<p>Filmstrip persistence. The camera centring decides whether older photos stay in view as the trip moves on, or fall out. The SWF and the recreation diverge at the edges by a few centring-pixels, which in the dense Reykjavík and Geysir clusters is the difference between a photo persisting through five minutes of trip-time and being lost in two. This is the heart of what Even called &quot;textural clusters of experience&quot;. Open.</p>
+<p>End-of-trip drift. Safari hits ~25–28 fps under live screen-recording load, the SWF&#x27;s effective rate is 30 fps, so the recording&#x27;s parser-time lags the .mov&#x27;s by a few percent that compound over 192 s into seconds of phase error at the end. The drift is a recording-rig artefact, not a recreation bug — the live page runs at full rate. But it means the side-by-side at the back end of the trip is not a fair comparison. A deterministic test-mode that ticks both sources from the same wall-clock would dissolve it.</p>
+<h3 id="xv-1-the-ocr-driven-sync-technique">XV.1 The OCR-driven sync technique</h3>
+<p>The seek-mapping bugs above all came from trying to compute the recreation&#x27;s seek position analytically. The reliable approach (version 9) was to OCR the .mov&#x27;s display label out of each frame and build the seek manifest from the literal timestamps.</p>
+<pre class="code" data-lang="bash"><code>
+ffmpeg -i mov_frames/f${N}.jpg -vf &quot;crop=300:50:30:0,scale=...,negate&quot; - |
+   tesseract - - --psm 6 -c tessedit_char_whitelist=&quot;0-9A-Za-z:+- &quot;
+</code></pre>
+<p>OCR succeeded on 130 of 192 frames; the rest were interpolated between adjacent successes. With this manifest, headless Chrome captured the recreation at the exact same trip-time the .mov displayed. The two panels were synced at the millisecond level.</p>
+<h3 id="xv-2-the-discovery-of-the-registration-order-divergence">XV.2 The discovery of the registration-order divergence</h3>
+<p>Reading the AS2 init code more carefully (DoAction_16.as) revealed that the SWF registers <code>cameraKeeper</code> <em>before</em> <code>timeKeeper</code> in the animation listener list:</p>
+<pre class="code" data-lang="text"><code>
+animationManager_addListener(_root.cameraKeeper);
+animationManager_addListener(_root.timeKeeper);
+</code></pre>
+<p>So per tick, the SWF runs: parser → cameraKeeper → timeKeeper → images.</p>
+<p>Camera reads the <em>previous</em> frame&#x27;s eased dispT, then TimeKeeper updates dispT for the <em>next</em> frame to read. One-frame phase lag across every frame.</p>
+<p>The JS port had the order reversed (parser → timeKeeper → cameraKeeper → images) which means camera reads the <em>current</em> frame&#x27;s eased dispT. The absolute lag is one frame (~33 ms at 30 fps), but it&#x27;s a phase between two coupled springs running at the same time, on the same data — exactly the relationship that produces the <em>settling</em> the viewer reads as &quot;alive&quot;. Reversing the registration order lets camera and time act on the same frame instead of one trailing the other, which subtly changes the chase behaviour at every transition between motion and rest. Not yet fixed in <code>index.html</code>. Open.</p>
+<h3 id="xv-3-from-headless-seek-to-live-recorded-playback">XV.3 From headless seek to live-recorded playback</h3>
+<p>By v9 the harness was as good as headless capture could make it. Each right-panel frame was the recreation rendered at the exact trip-time the .mov displayed, written out by Chromium with <code>?seek=0..1</code>. The problem became visible the moment Timo asked about settling behaviour: the right panel never showed any. Camera settle, photo bloom decay, marker chase during fast motion — every transient was already gone by the time the seek-and-screenshot ran. We were comparing the .mov&#x27;s live evolution to the recreation&#x27;s steady state.</p>
+<p>The shift in v10 was to stop seeking and start recording. Position Safari at the top-left of the screen, load the page with <code>?play=1</code> so it auto-plays, run <code>ffmpeg avfoundation</code> for 210 s while the recreation plays through. Then extract that recording at 1 fps, OCR the displayed timestamp out of each frame, build a manifest of &quot;recording-frame N → trip-time T&quot;, and match each .mov frame&#x27;s displayed time to its nearest recording-frame time.</p>
+<p>Two things fall out of doing it this way. The right panel now shows real transients — the camera actually overshoots and settles, the photo bloom curve actually decays, markers actually catch up. Comparison becomes about behaviour, not about end states.</p>
+<p>But the recreation no longer runs at the same speed as the .mov. Safari under live screen-recording load drops to ~25–28 fps, vs the SWF&#x27;s effective 30 fps. So the recording&#x27;s parser-time lags the .mov&#x27;s by a few percent, accumulating over 192 s into seconds of end-of-trip drift. v10_strict made this drift visible by showing blanks where no within-1-minute match existed (only 36 of 192 mov frames had one). The pragmatic fix in v11+ was nearest-time matching without a tolerance, accepting a few seconds of phase error as the price of seeing actual transients.</p>
+<p>The lesson, narrower than XV.6 below: when the question is <em>does the recreation behave like the original</em>, capture has to preserve the temporal evolution of both panels, not freeze either one. A screen-recording rig with timestamp OCR is the cheap way; a deterministic test-mode that ticks both at the same wall-clock rate would be the principled way.</p>
+<h3 id="xv-4-the-photo-bloom-step-down">XV.4 The photo bloom step-down</h3>
+<p>A specific bug worth recording. SWF photos enter at huge scale and shrink fast: <code>scale = 3.5 + 9_000_000 / (|dt|+1) %</code>, where <code>dt</code> is seconds from the photo&#x27;s exact time. At dt=0 this is ~9M %, capped in the SWF at <code>SCALE_CAP = 2500 %</code>. The intended dynamic is a hard peak that decays over ~60 seconds back into the camera&#x27;s normal zoom range.</p>
+<p>In porting, an early safety cap of <code>MAX_FINAL_SCALE = 100</code> was added to keep <code>drawImage</code> from being called at absurd sizes during the first one or two frames after activation. Because the natural curve falls below 100 at around dt ≈ 80 s, the cap was doing exactly the wrong thing: photos sat at the cap for ~80 s, then suddenly step-shrank when the natural curve crossed under the cap. Visible as &quot;the images jump from medium to small after settling&quot;, most obvious in the dense Reykjavík sequence.</p>
+<p>Two fixes were considered. Remove the cap entirely, and let <code>drawImage</code> handle absurd sizes via canvas viewport clipping (cheap because the photo is clipped to a 500-px viewport before raster). Or move the cap to where the natural curve would land at the first post-activation tick, so the cap and the curve agree at that moment and there is no perceptible step. The second was chosen (<code>MAX_FINAL_SCALE = 80</code>, computed from median GPS gap × max camera scale): it&#x27;s defensive against pathological dt values that could otherwise still ship megapixel rasters to the GPU.</p>
+<p>A reminder that &quot;safety caps&quot; without checking whether the underlying curve crosses them are silent visual bugs.</p>
+<h3 id="xv-5-the-marker-scale-tweak-and-what-it-admits">XV.5 The marker-scale tweak (and what it admits)</h3>
+<p>Up to v12 the recreation rendered SWF design-unit shapes byte-for-byte: octagon vertices at radius 0.20, scaled by the same camera factor the SWF uses. In the side-by-side, the markers in the right panel read consistently smaller than in the left.</p>
+<p>The reason is the rig, not the recreation. The .mov was screen- recorded at the SWF&#x27;s native 478 × 478 px and is upsampled to 500 × 500 in the composite. The recreation is rendered at native 500 × 500 retina with no upsample. So every primitive in the .mov panel gets a ~5 % size bonus from interpolation that the recreation panel doesn&#x27;t see. Photos compensate because they&#x27;re raster and their visual scale is dominated by the bloom math; line-art markers, being design-unit primitives, show the difference cleanly.</p>
+<p>v13 bumps the octagon design size by +15 % (slightly more than the 5 % rig delta, to account for stroke-width perception). It is the only constant in the port that doesn&#x27;t match the SWF byte-for-byte, and it&#x27;s marked in <code>index.html</code> as a side-by-side rig compensation, not a fidelity fix. The live page (without the comparison panel) should arguably revert to the SWF-faithful 0.20 radius. Recorded here as an open question.</p>
+<h3 id="xv-6-the-ground-truth-first-lesson">XV.6 The &quot;ground truth first&quot; lesson</h3>
+<p>The harness above is the move that should have been made on day one. Every iteration of code-reading, AS2 porting, and parameter-tweaking between the first attempt and v9 was Claude trusting symbolic reasoning over visual ground truth. Each tweak felt cheaper than the harness; the cumulative cost of guessing was much higher than building it.</p>
+<p>Captured to memory at <code>feedback_ground_truth_first.md</code> (in the project&#x27;s per-conversation memory directory) so the next session opens with this loaded:</p>
+<blockquote>When the user has a high-fidelity ground-truth artefact (a video, a screenshot, a render), build the synced comparison harness BEFORE the first iteration of porting. Treat it as the test harness, not as the polish step at the end.</blockquote>
+<p>This is the load-bearing process lesson of the whole session. Worth more than any single technical finding.</p>
+</section>
+<section id="xvi-the-artist-coder-problem" data-title="XVI. The artist-coder problem">
+<div class="shead"><h2>XVI. The artist-coder problem</h2><div class="ctl" data-for="xvi-the-artist-coder-problem"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>A pattern Timo named after publication, worth recording for any future archaeology. In every place where the SWF had an idiosyncratic choice, Claude&#x27;s first pass was the textbook implementation:</p>
+<table>
+<thead><tr><th>What Even wrote in 2004</th><th>What Claude built first</th></tr></thead>
+<tbody>
+<tr><td>Parser eats one trkpt per animate frame</td><td>Linear time advance across the calendar</td></tr>
+<tr><td>Empirical 30 fps (declared 120 in header)</td><td>120 fps from the header</td></tr>
+<tr><td>Second-order damped spring on time itself with <code>timeD *= 0.1</code></td><td>First-order exponential ease on <code>dispT</code></td></tr>
+<tr><td>Photo <code>_alpha = timer</code> ramping to 100, with the CXForm <code>mul a=0.1</code> overridden by <code>loadMovie</code></td><td>Photo opacity capped at literal CXForm value 0.10, then 0.35, then 0.55, then 0.85</td></tr>
+<tr><td>Bloom formula <code>3.5 + 9_000_000 / (dt + 1)</code></td><td>Approximations of the curve before reading the AS2</td></tr>
+<tr><td>Camera spring constants <code>(1/40, 0.69)</code> and <code>(1/3, 0.59)</code></td><td>Cleaner round numbers attempted first</td></tr>
+<tr><td>90× CAMDRAWING vs 100× EXTENTS scale ratio</td><td>Single scale factor for both states</td></tr>
+<tr><td><code>lat × -800</code>, <code>lon × 400</code> (a 2:1 squash, not a real projection)</td><td>Equirectangular with cosine correction at first</td></tr>
+<tr><td>Hairline strokes from twip-stored line widths (1 screen pixel at any zoom)</td><td>Constant pixel widths that scaled with zoom</td></tr>
+<tr><td>Trkpt-paced playback that elides overnight gaps for free</td><td>Linear advance that rendered overnight gaps as long static stretches</td></tr>
+</tbody>
+</table>
+<p>Every entry in the right column is what a competent engineer in 2026 would write if handed the spec. None is what Even wrote in 2004.</p>
+<p>The reason is not training-data dominance alone. The obvious choice is also lower-risk for a system trained to defer to convention. A constant of 0.69 looks like a typo to a system that rounds to clean numbers. A parser that ignores timestamps looks like a bug to a system that respects data. A CXForm of <code>mul a=0.1</code> looks like a hard cap to a system that reads specs literally. A 120 fps header looks like the truth to a system that trusts metadata. The cumulative effect: AI risk-aversion at the small scale compounds into aesthetic cowardice at the large scale. Median is the safe play. Median is also, by definition, not interesting.</p>
+<p>The corollary for software archaeology of artist-coder work: the first pass will always be the version a competent contemporary engineer would build. That is the wrong starting point if what you want is the original. Each idiosyncratic choice has to be surfaced individually, either by reading the bytecode hours and asking <em>&quot;wait, why did they do it this way?&quot;</em>, or by someone in the loop with taste saying <em>&quot;no, that&#x27;s not it&quot;</em> and naming what is missing. The whole session above is the record of Timo doing the second of those, twenty-four times.</p>
+<p>The practical consequence is that AI is not a substitute for the human in this kind of work. It is a force-multiplier for a particular kind of human: one who knows what the work felt like, can recognise when the recreation has flattened, and is willing to keep saying so. Without that person, an AI-led recovery flattens to the median engineer&#x27;s reading of the artefact. With them, it can recover the artist&#x27;s.</p>
+</section>
+<section id="xvii-even-s-reactions-in-three-rounds" data-title="XVII. Even&#x27;s reactions, in three rounds">
+<div class="shead"><h2>XVII. Even&#x27;s reactions, in three rounds</h2><div class="ctl" data-for="xvii-even-s-reactions-in-three-rounds"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div>
+<p>Recorded verbatim because the original collaborator&#x27;s voice is the closest thing to a passing grade this kind of work can earn.</p>
+<p>Round one — when the live recreation first ran, before the side-by-side harness existed:</p>
+<blockquote>Wow. That&#x27;s pretty much 1:1.</blockquote>
+<p>Round two — when shown a still from the early side-by-side, with the admission that the panels were actually quite different and that Claude had been asked &quot;to go into your artistic mind and understand the patterns you used&quot;:</p>
+<blockquote>Haha. Thanks for doing the side by side. It feels like it preserves the feeling though, even if not px accurate. The above video felt like the work I remember producing even if there is slippage. This is what talking to your grandma in the box is going to be like. For all intents and purposes the same thing.</blockquote>
+<p>Round three — when shown the writeup, with the observation about overnight pauses already folded into Section X.7:</p>
+<blockquote>Aaw, nice! Yes Claude, without that it would be v boring. Interesting that Claude&#x27;s first pass was just a very ordinary photo + gpx track rendering and had lots of long overnight pauses. Boring indeed.</blockquote>
+<p>Three things follow.</p>
+<p>The &quot;1:1&quot; reaction in round one was <em>before</em> any visual harness existed. Even was looking at the recreation by itself, against memory of the original from twenty-two years ago. His memory and the recreation matched closely enough that he wrote 1:1.</p>
+<p>Round two corrects him. Once we put the panels next to each other, the differences became visible: photo cadence, marker density, exact trail shape, the lead-lag of camera transients. They were never going to be 1:1 in pixels. But the <em>feeling</em> was preserved, in his words, and &quot;the above video felt like the work I remember producing even if there is slippage&quot;. That distinction (preserves the feeling vs pixel accurate) is the bar that mattered in this work and probably matters in any artist-coder archaeology. Mechanism-true is the goal, not pixel-true.</p>
+<p>The &quot;grandma in the box&quot; line is the strongest framing of what AI archaeology actually is. The recreation is not Even, and it is not the SWF either. It is an interpretation of the work, by AI plus the collaborator-now-archivist, that is recognisable to the maker as the same thing. <em>For all intents and purposes the same thing.</em> The recreation lives in the same category Even put it: a stand-in for the original good enough to talk to.</p>
+<p>Worth recording because the same conversation will happen again, with work whose makers are no longer here to react. The standard for &quot;is this the same thing?&quot; will be set by what makers said when they could still say it.</p>
+</section></main>
+</div>
+<div id="foot">
+  <span class="count"><b>0</b> of 17 sections read</span>
+  <span class="count">11,688 words</span>
+  <span class="spacer"></span>
+  <button id="reset" type="button">Reset</button>
+  <button id="copy" type="button">Copy for Claude</button>
+</div>
+<script>
+const KEY='timeland-archaeology-read-v1';
+const SECS=[{"id": "i-the-artefacts-on-disk", "title": "I. The artefacts on disk"}, {"id": "ii-the-2004-design-intent-in-timo-and-even-s-words", "title": "II. The 2004 design intent, in Timo and Even's words"}, {"id": "iii-the-brief-in-timo-s-words-in-order", "title": "III. The brief, in Timo's words, in order"}, {"id": "iv-the-tools-that-were-reached-for", "title": "IV. The tools that were reached for"}, {"id": "v-swf-mechanism-reference", "title": "V. SWF mechanism reference"}, {"id": "vi-the-port", "title": "VI. The port"}, {"id": "vii-bugs-preserved-on-purpose-and-the-two-later-reverted", "title": "VII. Bugs preserved on purpose (and the two later reverted)"}, {"id": "viii-the-visual-arc-from-the-mov-frames", "title": "VIII. The visual arc (from the .mov frames)"}, {"id": "ix-the-chronology-in-eight-commits", "title": "IX. The chronology, in eight commits"}, {"id": "x-the-audit-chain", "title": "X. The audit chain"}, {"id": "xi-what-claude-got-wrong-on-first-pass", "title": "XI. What Claude got wrong on first pass"}, {"id": "xii-what-only-timo-could-do", "title": "XII. What only Timo could do"}, {"id": "xiii-ten-things-to-keep-in-mind-for-the-next-archaeology", "title": "XIII. Ten things to keep in mind for the next archaeology"}, {"id": "xiv-what-this-archaeology-actually-was", "title": "XIV. What this archaeology actually was"}, {"id": "xv-the-side-by-side-harness-in-thirteen-iterations", "title": "XV. The side-by-side harness, in thirteen iterations"}, {"id": "xvi-the-artist-coder-problem", "title": "XVI. The artist-coder problem"}, {"id": "xvii-even-s-reactions-in-three-rounds", "title": "XVII. Even's reactions, in three rounds"}];
+let state=JSON.parse(localStorage.getItem(KEY)||'{}');
+
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function st(id){return state[id]||(state[id]={read:false,note:''})}
+
+function paint(){
+  let n=0;
+  SECS.forEach(s=>{
+    const d=st(s.id), sec=document.getElementById(s.id);
+    const btn=sec.querySelector('button.read');
+    const link=document.querySelector(`nav a[href="#${s.id}"]`);
+    btn.setAttribute('aria-pressed',d.read?'true':'false');
+    btn.textContent=d.read?'Read':'Mark read';
+    sec.classList.toggle('read',d.read);
+    link.classList.toggle('done',d.read);
+    const ta=sec.querySelector('textarea');
+    if(ta&&ta.value!==d.note)ta.value=d.note;
+    const nb=sec.querySelector('.note-open');
+    nb.textContent=d.note.trim()?'Note ·':'Note';
+    if(d.read)n++;
+  });
+  document.querySelector('#foot .count b').textContent=n;
+  document.getElementById('copy').disabled=false;
+}
+
+// build note panels
+SECS.forEach(s=>{
+  const sec=document.getElementById(s.id);
+  const box=document.createElement('div');
+  box.className='note';
+  box.innerHTML='<textarea placeholder="What you thought about this section."></textarea>'+
+    '<p class="hint">A note on its own records nothing. Mark read when you have read it.</p>';
+  sec.querySelector('.shead').after(box);
+  sec.querySelector('.note-open').addEventListener('click',()=>{
+    box.classList.toggle('open');
+    if(box.classList.contains('open'))box.querySelector('textarea').focus();
+  });
+  box.querySelector('textarea').addEventListener('input',e=>{
+    st(s.id).note=e.target.value; save();
+    sec.querySelector('.note-open').textContent=e.target.value.trim()?'Note ·':'Note';
+  });
+  sec.querySelector('button.read').addEventListener('click',()=>{
+    const d=st(s.id); d.read=!d.read; save(); paint();
+  });
+});
+
+// scroll progress + current section
+const bar=document.getElementById('bar');
+function onScroll(){
+  const h=document.documentElement;
+  const p=h.scrollTop/Math.max(1,h.scrollHeight-h.clientHeight);
+  bar.style.width=(p*100)+'%';
+  let cur=SECS[0]&&SECS[0].id;
+  for(const s of SECS){
+    const r=document.getElementById(s.id).getBoundingClientRect();
+    if(r.top<=120)cur=s.id;
+  }
+  document.querySelectorAll('nav a').forEach(a=>
+    a.classList.toggle('on',a.getAttribute('href')==='#'+cur));
+}
+addEventListener('scroll',onScroll,{passive:true});
+addEventListener('resize',onScroll);
+
+document.getElementById('copy').addEventListener('click',()=>{
+  const read=SECS.filter(s=>st(s.id).read);
+  const notes=SECS.filter(s=>st(s.id).note.trim());
+  const L=[];
+  L.push('Timeland archaeology essay — my pass, '+SECS.length+' sections.');
+  L.push('');
+  L.push('Read '+read.length+' of '+SECS.length+'.');
+  if(read.length===SECS.length)L.push('I have read the whole essay.');
+  else{
+    const left=SECS.filter(s=>!st(s.id).read).map(s=>s.title);
+    L.push('Still to read: '+left.join('; '));
+  }
+  if(notes.length){
+    L.push('');L.push('Notes:');
+    notes.forEach(s=>L.push('- '+s.title+': '+st(s.id).note.trim()));
+  }
+  const txt=L.join('\n');
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById('copy');
+    b.textContent='Copied';setTimeout(()=>b.textContent='Copy for Claude',1400);
+  });
+});
+
+document.getElementById('reset').addEventListener('click',()=>{
+  if(!confirm('Clear read marks and notes on this page?'))return;
+  state={};save();paint();
+});
+
+paint();onScroll();
+</script>
+</body></html>

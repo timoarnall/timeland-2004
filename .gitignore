@@ -1,2 +1,6 @@
 .DS_Store
 data/photos/.DS_Store
+
+# Branch-archive bundles stay local. They run to ~880 MB each, over GitHub's
+# 100 MB file limit, so a stray `git add -A` makes the branch unpushable.
+_Documentation/branch-archive/*.bundle
