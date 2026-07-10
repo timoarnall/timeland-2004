@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Time that land forgot, an archaeology — the lay essay</title>
+<style>
+:root{
+  --bg:#0d0e10; --ink:#f2f0ec; --dim:#8b8880; --faint:#3a3a3d;
+  --accent:#e8a33d; --panel:#141519; --code:#111216;
+  --body:18px; --head:36px;
+  --font:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,monospace;
+  --measure:34rem;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:600 var(--body)/1.62 var(--font);
+  -webkit-font-smoothing:antialiased;
+}
+#bar{position:fixed;top:0;left:0;height:2px;background:var(--accent);width:0;z-index:50}
+.wrap{display:grid;grid-template-columns:16rem minmax(0,var(--measure)) 1fr;gap:3rem;
+  max-width:76rem;margin:0 auto;padding:3rem 2rem 8rem}
+nav{position:sticky;top:3rem;align-self:start;max-height:80vh;overflow-y:auto;
+  font-size:var(--body);line-height:1.45}
+nav h3{margin:0 0 1rem;font-size:var(--body);color:var(--dim)}
+nav a{display:block;color:var(--faint);text-decoration:none;padding:.28rem 0}
+nav a:hover{color:var(--dim)}
+nav a.on{color:var(--ink)}
+nav a.done{color:var(--accent)}
+nav a.done::after{content:"  read";font-size:.72em;color:var(--faint)}
+main{min-width:0}
+h1{font-size:var(--head);line-height:1.15;margin:0 0 3rem;color:var(--ink)}
+h2{font-size:var(--head);line-height:1.2;margin:0;color:var(--ink)}
+h3{font-size:var(--body);margin:2.6rem 0 .6rem;color:var(--accent)}
+h4{font-size:var(--body);margin:2rem 0 .5rem;color:var(--dim)}
+section{margin:0 0 5rem;scroll-margin-top:2rem}
+section.read h2{color:var(--dim)}
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;
+  margin:0 0 1.6rem;flex-wrap:wrap}
+p{margin:0 0 1.2rem;color:var(--ink)}
+li{margin:0 0 .4rem}
+ul,ol{margin:0 0 1.2rem;padding-left:1.2rem}
+blockquote{margin:1.4rem 0;padding-left:1.2rem;border-left:2px solid var(--faint);color:var(--dim)}
+code{font:400 .88em/1.5 var(--mono);color:var(--dim);background:none;word-break:break-word}
+pre.code{background:var(--code);padding:1rem 1.1rem;overflow-x:auto;margin:1.4rem 0;border-radius:4px}
+pre.code code{color:var(--dim);font-size:.84em}
+table{border-collapse:collapse;width:100%;margin:1.4rem 0;font-size:.9em}
+th{text-align:left;color:var(--dim);font-weight:600;padding:.4rem .8rem .4rem 0;vertical-align:top}
+td{padding:.35rem .8rem .35rem 0;color:var(--ink);vertical-align:top}
+a{color:var(--accent)}
+button{font:600 .84em var(--font);color:var(--dim);background:var(--panel);
+  border:none;border-radius:3px;padding:.4rem .8rem;cursor:pointer}
+button:hover{color:var(--ink)}
+button.read[aria-pressed="true"]{color:var(--bg);background:var(--accent)}
+.ctl{display:flex;gap:.4rem;flex:0 0 auto}
+.note{display:none;width:100%;margin:0 0 1.6rem}
+.note.open{display:block}
+.note textarea{width:100%;min-height:5rem;background:var(--panel);color:var(--ink);
+  border:none;border-radius:4px;padding:.9rem;font:600 .92em/1.5 var(--font);resize:vertical}
+.note textarea:focus{outline:1px solid var(--faint)}
+.note .hint{color:var(--faint);font-size:.8em;margin:.4rem 0 0}
+#foot{position:fixed;bottom:0;left:0;right:0;background:var(--panel);
+  padding:.9rem 2rem;display:flex;align-items:center;gap:1.4rem;z-index:40}
+#foot .count{color:var(--dim);font-size:.9em}
+#foot .count b{color:var(--ink);font-weight:600}
+#foot .spacer{flex:1}
+#copy{background:var(--accent);color:var(--bg)}
+#copy:hover{color:var(--bg);opacity:.85}
+#reset{background:none}
+@media(max-width:900px){
+  .wrap{grid-template-columns:1fr;padding:2rem 1.2rem 8rem}
+  nav{position:static;max-height:none;margin-bottom:2rem}
+}
+
+figure{margin:1.8rem 0}
+figure img{width:100%;height:auto;border-radius:4px;display:block}
+figcaption{color:var(--dim);font-size:.82em;margin:.5rem 0 0;line-height:1.5}
+hr{border:none;border-top:1px solid var(--faint);margin:3rem 0}
+</style>
+</head><body>
+<div id="bar"></div>
+<div class="wrap">
+<nav><h3>Contents</h3><a href="#opening">Opening</a>
+<a href="#four-files-in-a-folder">Four files in a folder</a>
+<a href="#what-it-means-to-pull-these-in-2026">What it means to pull these in 2026</a>
+<a href="#what-ai-did">What AI did</a>
+<a href="#getting-closer">Getting closer</a>
+<a href="#what-i-did-that-ai-could-not">What I did, that AI could not</a>
+<a href="#what-this-says-about-software-archaeology">What this says about software archaeology</a>
+<a href="#the-piece-itself">The piece itself</a></nav>
+<main><h1>Time that land forgot, an archaeology</h1><section id="opening"><div class="shead"><div class="ctl" data-for="opening"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p><em><a href="/2004/07/timeland">Time that land forgot</a></em> is a piece I made in July 2004 with <a href="http://www.polarfront.org">Even Westvang</a> at a workshop in Höfn, Iceland called <em>Inside and Out</em>, run by Pallit at the Iceland Academy of the Arts. We had ten days, a Garmin eTrex, a small digital camera and a copy of Macromedia Flash MX. We came back with 241 photographs strung along a 1,500 km GPS trail, and a Flash piece that played them back: a camera riding the trail, the photographs blooming in at the spots they were taken, red ring markers accumulating as the trip unfolded.</p>
+
+<p>It sat on the elasticspace blog for years, then it stopped working. Browsers dropped Flash in 2020. The piece went dark.</p>
+
+<p>Last week, over the course of one long evening, I got it running again, in plain HTML in a modern browser. <a href="https://timoarnall.github.io/timeland-2004/">It is here</a>. I want to write down what it took, because the process turned out to say something about software archaeology, and about what AI is for in this kind of work.</p></section><section id="four-files-in-a-folder"><div class="shead"><h2>Four files in a folder</h2><div class="ctl" data-for="four-files-in-a-folder"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p>The folder I started from contained four kinds of file. None of them, on their own, was enough to bring the piece back. Together they were just enough.</p>
+
+<p>The first was an <strong>SWF</strong>. That is the file extension for a compiled Flash movie, the thing a browser used to play. SWF stands for "Shockwave Flash", later renamed "Small Web Format". It is a binary blob, 27 kilobytes in this case, that contains the program logic, the drawn shapes, the layout, the timing. You cannot open it in a text editor and read it. You used to be able to play it with a Flash plugin in a browser. You cannot any more.</p>
+
+<p>The second was an <strong>FLA</strong>. That is the source file the SWF was compiled from. It is what I had open in Flash MX in Höfn, with a timeline and layers and the actual ActionScript I was writing. The compiled SWF was a smaller, faster version of it for the web. I still have the FLA. I cannot open it. Macromedia Flash MX has not shipped since 2004. Adobe bought Macromedia, renamed Flash to Animate, and Animate cannot read MX-format files. The changelog inside the folder reads, in full:</p>
+
+<blockquote>
+<p>31.07.04<br>
+- fixed string to date function in util that kept it from running on the PC. cuase: error in flash in date object, month must be set last<br>
+- saved file as MX project, instead of MX 2004.</p>
+</blockquote>
+
+<p>That last line shut the door. We saved the file in the older MX format so a collaborator on a slightly older Mac could still open it. That choice locked the file away from every later version. It is now a 65-kilobyte object on disk that no software in the world can open. The Unix <code>file</code> command identifies it as "Composite Document File V2 Document, Cannot read section info". A solid, intact, completely useless artefact.</p>
+
+<p>The third file was a <strong>QuickTime movie</strong>. <code>time_land_forgot.mov</code>, 84 megabytes, 192 seconds long. Even recorded it in Höfn by playing the Flash piece in a browser on his laptop and screen-grabbing the result. The original 2004 post on elasticspace describes the QuickTime in plain terms: "for those unable to run Flash at a reasonable frame rate." It was meant as a courtesy for slow laptops in 2004. Twenty-two years later it is the only continuous record of the piece actually playing. Nothing else captures the motion, the timing, the way the camera springs along behind the GPS, the way the photographs bloom large and shrink small.</p>
+
+<p>The fourth was the <strong>writeup</strong>. The post I had written on elasticspace at the time, plus a small <code>README.txt</code> Even and I left in the folder. The post described what the piece was for. The phrase that mattered most, twenty-two years later, was this:</p>
+
+<blockquote>
+<p>We chose to create a balance of representation in the interface around a set of prerogatives: first image (for expressivity), then time (for narrative), then location (for spatialising, and commenting on, image and time).</p>
+</blockquote>
+
+<p>That sentence turned out to be the design contract. Image first, then time, then location. The README named the inputs the piece needed (a GPS file, an image data file, a folder of JPEGs) and pointed at GPSbabel as the tool to convert GPS data. It ended with: "Any well researched questions on why things don't work can be addressed to even@polarfront.org."</p>
+
+<p>So: an unrunnable binary, an unopenable source, a screen recording, and a paragraph of prose. Together, just enough.</p></section><section id="what-it-means-to-pull-these-in-2026"><div class="shead"><h2>What it means to pull these in 2026</h2><div class="ctl" data-for="what-it-means-to-pull-these-in-2026"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p>Pulling them means different things for each one.</p>
+
+<p>The <strong>SWF</strong> can be pulled. There is a tool called <code>swfdump</code> that reads the bytecode and prints it out as a long text listing, 3,757 lines of low-level instructions in this case. There is a second tool, JPEXS, that goes a step further and decompiles the bytecode back into something close to the original ActionScript source. Inside that text I could find every class Even and I had written: <code>TimeKeeper</code>, <code>CameraKeeper</code>, <code>ImageKeeper</code>, <code>TrackKeeper</code>, <code>AnimParser</code>. Every constant: the spring stiffness of the camera (1/40), the damping coefficient (0.69), the photo bloom formula (3.5 + 9,000,000 / (time-since-photo + 1)). I could see the colour of the red minute markers (#c40000). I could see the lat/long projection (longitude × 400, latitude × −800, not a real map but two multipliers). The whole piece, faithfully preserved as it had compiled in July 2004.</p>
+
+<p>The <strong>FLA</strong> cannot be pulled. It just sits there. I tried. The file is structurally sound, the bytes are not corrupted, but no software exists that can read it. This is what breaks software archaeology: the source file, the thing I would normally consider canonical, the master, is the one that is gone. The compiled output, the thing I always treated as derivative, is the one that survives.</p>
+
+<p>The <strong>QuickTime</strong> can be pulled. <code>ffmpeg</code> reads it without fuss. I extracted it as 192 still frames at one per second, and a denser pass at two per second for closer comparison. Those frames became the visual ground truth. Without them I would have had no way to tell what the piece was supposed to look like in motion, only what it was supposed to do.</p>
+
+<p>The <strong>writeup</strong> can be pulled by reading it. It is text. It explains intent. The phrase about image, time and location was a sentence I could quote back at the recreation as a check.</p></section><section id="what-ai-did"><div class="shead"><h2>What AI did</h2><div class="ctl" data-for="what-ai-did"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p>I worked through this with Claude in a terminal. Claude is an AI built by Anthropic. It can read files, run shell commands, write code, and hold a conversation. I gave it the folder and asked it to find a way to bring the piece back.</p>
+
+<p>The things it was good at, in this work:</p>
+
+<p><em>Reading the bytecode.</em> 3,757 lines of disassembly is not a thing a person reads in an evening. Claude read it, identified every class, traced every function, and ported the logic across to JavaScript. Spring constants, animation order, draw shapes, even the order in which markers and photographs were stacked on screen.</p>
+
+<p><em>Running tests against hypotheses.</em> When I wasn't sure whether the camera in 2004 had been set to GPS time or to some local time, Claude wrote a Python script that detected every long pause in the GPS log, then checked which photographs landed inside those pauses under each possibility. It found the Geysir pause, a 32-minute stop at coordinates 64.31 north, −20.30 west, the exact location of the original geyser. It surfaced the five photographs whose EXIF timestamps fell inside that window. They showed a warning sign in Icelandic about not throwing objects into the springs, a person crouching by a steaming pool, tourists with cameras, a steaming geothermal pool with calcified rock. The camera was on GPS time. My recollection had been right; the empirical test confirmed it.</p>
+
+<p><em>Watching frame by frame.</em> When the recreation didn't quite match the QuickTime, Claude could line up frames from each at the same trip-time and tell me what was different. Side-by-side composite videos, regenerated each time we changed a constant.</p>
+
+<p><em>Speed.</em> The whole recreation, the side-by-side comparison videos, the public deployment to GitHub Pages with the source repo, took an evening. In 2004 it took ten days to make the original. The asymmetry is not in skill, it is in what the surrounding tools have become.</p>
+
+<p>The things it got wrong, often, on the way:</p>
+
+<p><em>The first attempt was a tool.</em> A dark map with photos as dots and a sidebar viewer. It was the kind of thing a software engineer would build in 2026 if you said "interactive GPS photo viewer". It was not what we made in 2004. We had made an experience. I had to state this before the second attempt was even tried. The aesthetic instinct of a current AI is to produce what other software in 2026 looks like; you have to push it firmly to recover what software in 2004 looked like.</p>
+
+<p><em>It trusted the file headers.</em> The SWF declares a frame rate of 120. Claude used that. The piece played four times too fast. The actual frame rate, which had to be measured by counting GPS points and dividing by the QuickTime duration, was 30. Many things in the bytecode are calibrated to that 30, and they only feel right at 30. The header was advertising; the QuickTime was the truth.</p>
+
+<p><em>It misread bugs as features and features as bugs.</em> The original code had a typo in the GPS display: it divided longitude by the latitude scale, producing a value of "10.95 W mid-Atlantic" while the actual coordinates were 21.88 W in Iceland. Claude initially hypothesised that the QuickTime had been rendered with a fuller GPS file that included the trans-Atlantic flight. It hadn't. The map shape was identical; the display formula was buggy. It took a careful look at the constant ratio between displayed and actual longitudes (exactly −0.5) to undo the wrong hypothesis.</p>
+
+<p><em>It went around in circles on transparency.</em> The photographs in the original have a translucent quality that lets older photographs show through behind newer ones. Claude tried seven different opacity settings, between 10% and 100%, before working out that the translucent quality was not translucency at all. It was size disparity. New photographs bloom large; old ones shrink to small frames behind. The visual impression of layering comes from many small things behind one big thing, not from any photograph being see-through.</p>
+
+<p><em>It used hedging language.</em> When I asked how close the recreation was to the original, Claude said things like "matches closely" and "broadly similar". I called this out. In archaeology, "closely" is doing a lot of work. Either two frames are the same or they are not.</p></section><section id="getting-closer"><div class="shead"><h2>Getting closer</h2><div class="ctl" data-for="getting-closer"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p>Halfway through the night I stopped trying to compare the recreation to the original by eye and built a side-by-side harness. The original QuickTime on the left, the recreation playing the same trip-time on the right. Render every frame to a still image, composite the two, build a video. Look at the result. Spot what's wrong. Fix it. Render again.</p>
+
+<p>It took nine iterations to get the side-by-side itself working correctly. The first version showed obviously different content (different photos in the dominant position, the camera centred elsewhere) because the seek-mapping I was using assumed evenly-spaced trackpoints, but they cluster densely during stops and sparsely during travel. Versions two through eight each fixed one bug: a wrong scale cap, a missed marker layer, a photo opacity ceiling that came from misreading a CXForm, a 9-minute drift, then a 6-hour drift, then a 7-hour drift caused by my Mac being on PDT and Python's <code>datetime</code> silently interpreting timestamps as Pacific. The OCR-driven sync (using <code>tesseract</code> to read each .mov frame's display label and rebuild the seek manifest from those literal timestamps) was version nine. Then the panels matched.</p>
+
+<figure>
+<img src="lay-essay-media/comparison-01-first-attempt.gif" alt="Animated GIF: a side-by-side comparison, original 2004 QuickTime on the left, the recreation on the right. Both panels show 500 by 500 white viewports with red ring markers, brown crosshairs, and translucent photographs blooming at GPS positions. The two panels show similar but visibly different content — different photos in the dominant position, the trail markers offset, the timing labels several minutes apart. The first comparison render, before the bugs in the synchronization were found.">
+<figcaption>First comparison render. Same data, similar mechanics, but the seek mapping was wrong: trackpoints aren't evenly spaced in time, and the recreation was landing on a different moment than the original.</figcaption>
+</figure>
+
+<figure>
+<img src="lay-essay-media/comparison-05-mid-iteration.gif" alt="Animated GIF: the same side-by-side, version five of the iteration. The two panels are closer than before. Photo content matches in many frames, the trail markers line up, the camera centres are closer, but the displayed clock times are still off by varying amounts (sometimes 9 minutes, sometimes 6 hours), revealing residual timing bugs.">
+<figcaption>Five iterations in. Photo content was matching, but the timestamps drifted by anything between 9 minutes and 6 hours depending on the moment. The cause turned out to be a Pacific-time interpretation by Python's <code>datetime</code> library. The Mac doing the rendering was on PDT.</figcaption>
+</figure>
+
+<figure>
+<img src="lay-essay-media/comparison-09-synced.gif" alt="Animated GIF: the synced final comparison. Left panel is the original 2004 QuickTime, right panel is the 2026 recreation. Both show identical content frame by frame: the same photo subjects in the dominant position, the same trail of red ring markers and brown hour crosshairs, the same camera position, the same displayed time and coordinates. The two panels are visually almost interchangeable, with only minor differences in marker density and photograph load timing.">
+<figcaption>Version nine. After OCR-reading the original .mov's display labels frame by frame to build the seek manifest, the panels finally matched. Same parser-time, same content, same dynamics. The visible differences from here on were data-load timing and small camera-spring transients, not mechanism bugs.</figcaption>
+</figure>
+
+<p>Building the side-by-side harness was the move I should have made on day one, before the first attempt at porting. I didn't, because reading the bytecode and reasoning symbolically felt cheaper than wiring up screenshots and OCR. Each tweak felt cheaper than the harness; the cumulative cost of guessing was much higher than just building it. I've written the lesson down for next time: when there's a high-fidelity ground-truth artefact (the .mov, in this case), build the synced comparison <em>before</em> the first iteration. Treat it as the test harness, not as the final polish.</p></section><section id="what-i-did-that-ai-could-not"><div class="shead"><h2>What I did, that AI could not</h2><div class="ctl" data-for="what-i-did-that-ai-could-not"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p>Six things, by my count.</p>
+
+<p><strong>One.</strong> I decided what the work was. Tool or film. AI could not make this call. The first attempt was a tool. The second was a film. The difference between them was not in the data or the code; it was in what the work was for. That decision is not in the bytecode and not in the QuickTime. It is in me.</p>
+
+<p><strong>Two.</strong> I decided what counted as character, and then I decided where the line was. The longitude bug, the wrong-but-consistent timezone label, the squashed projection that is not really a map. AI's instinct was to fix all three. My first instinct was to keep all three. After living with the recreation for a few days I split the call. The squashed projection stayed: the tall, vertically-stretched Iceland is the visual identity of the piece, and removing it produces a different artefact. The other two were doing experiential damage. The clock read two hours later than the actual local time; the longitude read as a value somewhere in the middle of the Atlantic. Both are values you read off the screen to follow the trip, and both were reading wrong. So I reverted those, and the recreation now shows the correct local time and the correct longitude. The principle landed somewhere like this: keep a bug if it is charming, revert it if it gets in the way of experiencing the data the work is supposed to be a record of. Bug-fidelity is a tactic, not the goal.</p>
+
+<p><strong>Three.</strong> I recognised Geysir from the photographs. Five JPEGs of Icelandic warning signs and steaming pools, taken by me in 2004, are recognisable to me on sight as Geysir. AI can describe what is in each frame: warning sign in Icelandic, person crouching, steaming pool. It cannot say "that is Geysir" with any confidence, because it does not have the priors. The empirical test that confirmed the camera was on UTC depended on someone who had been there saying "yes, that is the place".</p>
+
+<p><strong>Four.</strong> I tie-broke on feel. "Does the spring look right?" "Does the camera fly around enough during the bus journey?" "Why does the new version feel static?" These are not questions with a numerical answer. AI can render the comparison. Only I could decide when the comparison was close enough to stop.</p>
+
+<p><strong>Five.</strong> I pushed back when AI was confident and wrong. AI is good at producing plausible explanations. It produced a few during this work that were elegant and incorrect. The way you tell the difference is by checking the explanation against something outside the AI: against the QuickTime, against memory, against a photograph. I had to keep doing this.</p>
+
+<p><strong>Six.</strong> I brought the trip with me. "We stopped at a hot spring and jumped in." "Many of these photographs were taken from a moving bus." "There was a long walk in Reykjavik." These constraints came from being there in 2004. They are not in any file. Without them, several wrong synchronisations between photo and GPS would have passed unchallenged.</p></section><section id="what-this-says-about-software-archaeology"><div class="shead"><h2>What this says about software archaeology</h2><div class="ctl" data-for="what-this-says-about-software-archaeology"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p>A note before the broader claims. <em>Software archaeology</em> is what this felt like from the inside, and I am keeping the term, but the field this work sits inside has names and people who have been thinking about these questions for twenty years. Rhizome has been preserving net art since the late 1990s. The Variable Media Network, started by Jon Ippolito and collaborators, named the four strategies a project like this falls under: storage, emulation, migration, reinterpretation. What I did is closest to migration: rebuild the work in a new technical stack, keep the behaviour intact. Conservators who do this professionally would also describe it in terms of "significant properties" and "behaviour preservation": which property of the original is load-bearing, agreed with the artist, and which is incidental. The bug-preservation conversation in section <em>Two</em> above is that conversation, in different words.</p>
+
+<p>I am writing this as the artist who made the original, recreating it in a weekend with an AI, not as a conservator working on someone else's archive. So the framing here is personal, not institutional. It would be wrong to write it as if the questions were new.</p>
+
+<p>Four things.</p>
+
+<p>One: AI makes the impossible quickly possible, but only with hands at the keyboard. A person who knows nothing about Flash, ActionScript, GPS data, EXIF parsing, QuickTime extraction, or camera spring physics can sit down with an AI and have a working recreation by the end of the night. None of this would have been possible alone, in an evening, in 2026 or in any year. But "by the end of the night" is doing work. The hands at the keyboard are still mine. The decisions are still mine. The recognitions, the corrections, the standard of "no, do it again, this is not right yet" are still mine.</p>
+
+<p>Two: the survival package matters more than any one file. The SWF survived as a binary that no plugin can play. The FLA survived as an unopenable shell. The QuickTime survived as a heavy artefact made for a courtesy reason in 2004. The writeup survived because it was prose, in a database, on a server I have kept running. Together they were just enough. If any one of the four had been missing the recovery would have been much harder, and possibly impossible. Looking at the projects I am working on now, and at how I am storing them, I am asking: what is my QuickTime? What is my writeup? Will some part of this still be readable in 2046?</p>
+
+<p>Three: the human role does not shrink with AI, but it changes shape. Less typing, much less lookup, almost no boilerplate. More judgment, more push-back, more recognition, more standing on what the work is and refusing the plausible-but-wrong reading. The skill of the work is becoming the skill of saying "no, that is not it" and meaning it.</p>
+
+<p>Four: AI defaults to the median implementation, away from the eccentric one. In every place where the SWF had something idiosyncratic, the first pass was the textbook version. Linear time advance instead of one-trackpoint-per-frame. The header-declared 120fps instead of the empirical 30. A first-order ease on the time variable instead of a damped spring with momentum. A photo opacity cap at the literal CXForm value instead of the loadMovie semantic that overrides it. Each of those is what a competent engineer in 2026 would build if you handed them the spec. None of them is what Even built in 2004. The reason isn't only training-data dominance. It's also that the obvious choice is lower-risk: a constant of 0.69 looks like a typo to a system that rounds to clean numbers; a parser that ignores timestamps looks like a bug to a system that respects data; a 120fps header looks like the truth to a system that trusts metadata. AI risk-aversion at the small scale compounds into aesthetic cowardice at the large scale. Median is the safe play. Median is also, by definition, not interesting. The artist-coder choices are the ones that make a piece feel like itself, and they are the ones AI consistently smooths away on first pass. Recovering them takes a person in the loop with taste, who can say "no, that's not it" and name what's missing.</p>
+
+<hr>
+
+<p><em>Postscript, 9 May 2026.</em></p>
+
+<p>I sent this to Even at three points during the work. His reactions, in order.</p>
+
+<p>When the first port of the SWF mechanics was running but before any side-by-side existed, I sent him a link to the live recreation. He replied:</p>
+
+<blockquote>
+<p>Wow. That's pretty much 1:1.</p>
+</blockquote>
+
+<p>Then when I sent him a still from the side-by-side comparison and admitted that the panels were actually quite different, and that I'd asked Claude to "go into your artistic mind and understand the patterns you used":</p>
+
+<blockquote>
+<p>Haha. Thanks for doing the side by side. It feels like it preserves the feeling though, even if not px accurate. The above video felt like the work I remember producing even if there is slippage. This is what talking to your grandma in the box is going to be like. For all intents and purposes the same thing.</p>
+</blockquote>
+
+<p>And when I sent him the writeup itself:</p>
+
+<blockquote>
+<p>Aaw, nice! Yes Claude, without that it would be v boring. Interesting that Claude's first pass was just a very ordinary photo + gpx track rendering and had lots of long overnight pauses. Boring indeed.</p>
+</blockquote>
+
+<p>Three things to take away from this.</p>
+
+<p>The first is the distinction between <em>preserves the feeling</em> and <em>pixel accurate</em>. The whole session up to the comparison harness had been chasing pixel accuracy. The synced side-by-side proved we'd got close, but it also proved that the work was <em>already</em> recognisable to its maker before pixel accuracy was achieved. The thing that mattered to Even was the feeling, and the feeling was preserved by the mechanics being right (the spring constants, the bloom curve, the parser-paced playback) more than by any single pixel matching.</p>
+
+<p>The second is Even's underplayed point about the boring overnight pauses. The original SWF advanced one GPS trackpoint per animation frame, so empty time (the overnight gaps when the GPS was off, the sparse stretches between samples) took zero seconds in playback. The 2004 blog post named this design choice directly: "the system smoothes tracklog time to make breaks seem more like quick transitions." The first recreation advanced time linearly across the calendar, so those same gaps became long boring stretches with the photographs sitting unchanged for tens of seconds while nothing happened. The 2004 piece avoided this for free, by walking the array rather than the clock. The fix in the recreation was to walk the array too. Stops dwell, motion races, nights vanish.</p>
+
+<p>The third is "talking to your grandma in the box." Even is being playful, but he's also being precise. The recreation is not Even, and it is not the SWF either. It is an interpretation of the work, by AI plus me, twenty-two years after the fact, that is recognisable to the person who made it as the same thing. <em>For all intents and purposes the same thing</em>. That is a strong claim, and it is the closest thing to a passing grade that this kind of archaeology can earn.</p></section><section id="the-piece-itself"><div class="shead"><h2>The piece itself</h2><div class="ctl" data-for="the-piece-itself"><button class="read" type="button" aria-pressed="false">Mark read</button><button class="note-open" type="button">Note</button></div></div><p>It is back. It runs in any modern browser at <a href="https://timoarnall.github.io/timeland-2004/">timoarnall.github.io/timeland-2004</a>. A camera rides along a GPS trail across Iceland in early July 2004. Photographs surface at the locations they were taken, first huge and pixelated at the moment of presence, then receding into the timeline as time moves on. Red ring markers accumulate as the trip unfolds; brown crosshairs mark the hours. Five days compressed into roughly three minutes.</p>
+
+<p>The clock at the top reads the actual time the photograph was taken in Iceland. The longitude reads as the actual longitude. The first version of this restoration preserved both display bugs from the original — the clock was two hours ahead, the longitude landed in the middle of the Atlantic — on the principle that fidelity to the original meant fidelity to all of it. After watching the piece play for a few days I changed my mind. The bugs that obstructed reading the trip went; the squashed projection that gives Iceland its tall stretched look stayed. Iceland, July 2004, with the bugs that were charming kept and the bugs that got in the way removed.</p>
+
+<p>The closing paragraph of the original 2004 post wished for one thing the Flash piece did not have:</p>
+
+<blockquote>
+<p>Another strand of ideas we explored was using the metaphor of a 16mm Steenbeck edit deck: scrubbing 16mm film through the playhead and watching the resulting sound and image come together: we could use the scrubbing of an image timeline, to control all of the other metadata, and give real control to the user.</p>
+</blockquote>
+
+<p>The 2026 recreation has a scrub bar. The wish in the closing paragraph of the 2004 post made it into the restoration, twenty-two years after it was written. Even and I are both still here. The photographs are still 320 pixels wide. The piece works.</p></section></main>
+</div>
+<div id="foot">
+  <span class="count"><b>0</b> of 8 sections read</span>
+  <span class="count">4,248 words &middot; the lay version</span>
+  <span class="spacer"></span>
+  <button id="reset" type="button">Reset</button>
+  <button id="copy" type="button">Copy for Claude</button>
+</div>
+<script>
+const KEY='timeland-lay-essay-read-v1';
+const SECS=[{"id": "opening", "title": "Opening"}, {"id": "four-files-in-a-folder", "title": "Four files in a folder"}, {"id": "what-it-means-to-pull-these-in-2026", "title": "What it means to pull these in 2026"}, {"id": "what-ai-did", "title": "What AI did"}, {"id": "getting-closer", "title": "Getting closer"}, {"id": "what-i-did-that-ai-could-not", "title": "What I did, that AI could not"}, {"id": "what-this-says-about-software-archaeology", "title": "What this says about software archaeology"}, {"id": "the-piece-itself", "title": "The piece itself"}];
+let state=JSON.parse(localStorage.getItem(KEY)||'{}');
+
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function st(id){return state[id]||(state[id]={read:false,note:''})}
+
+function paint(){
+  let n=0;
+  SECS.forEach(s=>{
+    const d=st(s.id), sec=document.getElementById(s.id);
+    const btn=sec.querySelector('button.read');
+    const link=document.querySelector(`nav a[href="#${s.id}"]`);
+    btn.setAttribute('aria-pressed',d.read?'true':'false');
+    btn.textContent=d.read?'Read':'Mark read';
+    sec.classList.toggle('read',d.read);
+    link.classList.toggle('done',d.read);
+    const ta=sec.querySelector('textarea');
+    if(ta&&ta.value!==d.note)ta.value=d.note;
+    const nb=sec.querySelector('.note-open');
+    nb.textContent=d.note.trim()?'Note ·':'Note';
+    if(d.read)n++;
+  });
+  document.querySelector('#foot .count b').textContent=n;
+  document.getElementById('copy').disabled=false;
+}
+
+// build note panels
+SECS.forEach(s=>{
+  const sec=document.getElementById(s.id);
+  const box=document.createElement('div');
+  box.className='note';
+  box.innerHTML='<textarea placeholder="What you thought about this section."></textarea>'+
+    '<p class="hint">A note on its own records nothing. Mark read when you have read it.</p>';
+  sec.querySelector('.shead').after(box);
+  sec.querySelector('.note-open').addEventListener('click',()=>{
+    box.classList.toggle('open');
+    if(box.classList.contains('open'))box.querySelector('textarea').focus();
+  });
+  box.querySelector('textarea').addEventListener('input',e=>{
+    st(s.id).note=e.target.value; save();
+    sec.querySelector('.note-open').textContent=e.target.value.trim()?'Note ·':'Note';
+  });
+  sec.querySelector('button.read').addEventListener('click',()=>{
+    const d=st(s.id); d.read=!d.read; save(); paint();
+  });
+});
+
+// scroll progress + current section
+const bar=document.getElementById('bar');
+function onScroll(){
+  const h=document.documentElement;
+  const p=h.scrollTop/Math.max(1,h.scrollHeight-h.clientHeight);
+  bar.style.width=(p*100)+'%';
+  let cur=SECS[0]&&SECS[0].id;
+  for(const s of SECS){
+    const r=document.getElementById(s.id).getBoundingClientRect();
+    if(r.top<=120)cur=s.id;
+  }
+  document.querySelectorAll('nav a').forEach(a=>
+    a.classList.toggle('on',a.getAttribute('href')==='#'+cur));
+}
+addEventListener('scroll',onScroll,{passive:true});
+addEventListener('resize',onScroll);
+
+document.getElementById('copy').addEventListener('click',()=>{
+  const read=SECS.filter(s=>st(s.id).read);
+  const notes=SECS.filter(s=>st(s.id).note.trim());
+  const L=[];
+  L.push('Timeland lay essay (the version for readers) — my pass, '+SECS.length+' sections.');
+  L.push('');
+  L.push('Read '+read.length+' of '+SECS.length+'.');
+  if(read.length===SECS.length)L.push('I have read the whole essay.');
+  else{
+    const left=SECS.filter(s=>!st(s.id).read).map(s=>s.title);
+    L.push('Still to read: '+left.join('; '));
+  }
+  if(notes.length){
+    L.push('');L.push('Notes:');
+    notes.forEach(s=>L.push('- '+s.title+': '+st(s.id).note.trim()));
+  }
+  const txt=L.join('\n');
+  navigator.clipboard.writeText(txt).then(()=>{
+    const b=document.getElementById('copy');
+    b.textContent='Copied';setTimeout(()=>b.textContent='Copy for Claude',1400);
+  });
+});
+
+document.getElementById('reset').addEventListener('click',()=>{
+  if(!confirm('Clear read marks and notes on this page?'))return;
+  state={};save();paint();
+});
+
+paint();onScroll();
+</script>
+</body></html>
