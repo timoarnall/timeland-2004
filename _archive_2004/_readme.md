@@ -1,0 +1,4 @@
+# _archive_2004
+The original 2004 Timeland artefacts: the Flash piece as it shipped, plus the 2026 decompilation work used to rebuild it. Read-only, kept as the source of truth for the recreation in the parent folder.
+
+**Contains**: the compiled SWF (`timeland19.swf`) and its Flash MX source (`timeland.fla`, partly corrupted), a 192-second QuickTime recording of the original playing (`time_land_forgot.mov`), the original 2004 web pages (`index_original.html`, `noimages.html`, `index_map.html`), 2004 release docs (`README_2004.txt`, `license.txt`, `changelog.txt`), the EXIF-to-XML Python tools (`exif2xml/`), a GPX file, and two folders of frames extracted from the QuickTime file (`mov_frames/`, `mov_frames_2fps/`) plus a full SWF bytecode dump (`swfdump_full.txt`) made during the 2026 rebuild.
